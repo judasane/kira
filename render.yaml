@@ -1,16 +1,10 @@
-services:
-  # PostgreSQL Database
-  - type: pserv
-    name: kira-payment-db
-    env: docker
+databases:
+  - name: kira-payment-db
+    databaseName: kira_payments
     plan: starter
     region: oregon
-    dockerfilePath: ./Dockerfile.postgres
-    databases:
-      - name: kira_payments
-        databaseName: kira_payments
-        user: postgres
 
+services:
   # API Backend
   - type: web
     name: kira-payment-api
