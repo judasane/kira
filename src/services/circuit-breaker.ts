@@ -11,10 +11,8 @@ export class CircuitBreaker {
   private failureCount: number = 0;
   private lastFailureTime: number = 0;
   private readonly config: CircuitBreakerConfig;
-  private readonly provider: PSPProvider;
 
-  constructor(provider: PSPProvider, circuitConfig?: CircuitBreakerConfig) {
-    this.provider = provider;
+  constructor(_provider: PSPProvider, circuitConfig?: CircuitBreakerConfig) {
     this.config = circuitConfig || {
       failureThreshold: config.circuitBreaker.failureThreshold,
       timeout: config.circuitBreaker.timeoutMs,

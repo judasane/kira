@@ -113,8 +113,8 @@ export class PSPOrchestrationService {
   private async attemptCharge(
     provider: PSPProvider,
     request: PSPChargeRequest,
-    transactionId: string,
-    isPrimary: boolean
+    _transactionId: string,
+    _isPrimary: boolean
   ): Promise<PSPChargeResponse> {
     // Verificar circuit breaker
     const breaker = circuitBreakerManager.getBreaker(provider);

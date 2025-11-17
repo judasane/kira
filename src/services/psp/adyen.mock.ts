@@ -13,8 +13,6 @@ export class AdyenMock extends BasePSPMock {
   }
 
   async charge(request: PSPChargeRequest): Promise<PSPChargeResponse> {
-    const startTime = Date.now();
-
     // Simular latencia de red
     const latencyMs = await this.simulateLatency();
 
