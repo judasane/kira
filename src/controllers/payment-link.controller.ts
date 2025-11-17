@@ -142,7 +142,7 @@ export class PaymentLinkController {
 
         // Calcular preview
         const calculation = await feeCalculationService.preview(
-          paymentLink.amountUsd,
+          paymentLink.amountUsd.toNumber(),
           feeConfig,
           isFirstTx
         );
@@ -186,9 +186,9 @@ export class PaymentLinkController {
     }
 
     return {
-      fixedFeeUsd: defaultConfig.fixedFeeUsd,
-      variableFeePercent: defaultConfig.variableFeePercent,
-      fxMarkupPercent: defaultConfig.fxMarkupPercent,
+      fixedFeeUsd: defaultConfig.fixedFeeUsd.toNumber(),
+      variableFeePercent: defaultConfig.variableFeePercent.toNumber(),
+      fxMarkupPercent: defaultConfig.fxMarkupPercent.toNumber(),
       firstTxFreeCount: defaultConfig.firstTxFreeCount,
     };
   }
