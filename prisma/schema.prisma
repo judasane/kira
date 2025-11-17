@@ -1,0 +1,196 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// ENUMS
+// ============================================================================
+
+enum PaymentLinkStatus {
+  DRAFT
+  ACTIVE
+  EXPIRED
+  COMPLETED
+  CANCELLED
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+enum PSPProvider {
+  STRIPE
+  ADYEN
+}
+
+enum PSPAttemptStatus {
+  SUCCESS
+  DECLINED
+  TIMEOUT
+  ERROR
+}
+
+// ============================================================================
+// MODELS
+// ============================================================================
+
+/// Merchants en el sistema (simplificado para este MVP)
+model Merchant {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relaciones
+  paymentLinks PaymentLink[]
+  feeConfigs   FeeConfig[]
+
+  @@map("merchants")
+}
+
+/// Configuración de fees por merchant
+model FeeConfig {
+  id                 String   @id @default(cuid())
+  merchantId         String
+  merchant           Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  // Fees
+  fixedFeeUsd        Float    @default(0.30)
+  variableFeePercent Float    @default(0.029) // 2.9%
+  fxMarkupPercent    Float    @default(0.015) // 1.5%
+
+  // Incentivos
+  firstTxFreeCount   Int      @default(0)
+
+  // Metadata
+  isDefault          Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([merchantId])
+  @@map("fee_configs")
+}
+
+/// Payment Links creados por merchants
+model PaymentLink {
+  id          String            @id @default(cuid())
+  merchantId  String
+  merchant    Merchant          @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+
+  // Información del link
+  status      PaymentLinkStatus @default(ACTIVE)
+  amountUsd   Float
+  description String?
+
+  // Expiración
+  expiresAt   DateTime?
+
+  // Fee config override (JSON para este MVP)
+  feeConfigOverride Json?
+
+  // Metadata adicional
+  metadata    Json?
+
+  // Timestamps
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  // Relaciones
+  transactions Transaction[]
+
+  @@index([merchantId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("payment_links")
+}
+
+/// Transacciones (intentos de pago sobre un payment link)
+model Transaction {
+  id              String            @id @default(cuid())
+  paymentLinkId   String
+  paymentLink     PaymentLink       @relation(fields: [paymentLinkId], references: [id], onDelete: Cascade)
+
+  // Estado
+  status          TransactionStatus @default(PENDING)
+
+  // PSP usado finalmente
+  pspProvider     PSPProvider?
+
+  // Montos
+  amountUsd       Float
+  amountMxn       Float?
+  fxRateApplied   Float?
+  feesTotalUsd    Float?
+
+  // Idempotencia
+  idempotencyKey  String?           @unique
+
+  // Token de tarjeta (mock)
+  cardToken       String
+
+  // Metadata
+  metadata        Json?
+
+  // Razón de fallo (si aplica)
+  failureReason   String?
+
+  // Timestamps
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  // Relaciones
+  pspAttempts     PSPAttempt[]
+
+  @@index([paymentLinkId])
+  @@index([status])
+  @@index([idempotencyKey])
+  @@index([createdAt])
+  @@map("transactions")
+}
+
+/// Intentos de cobro contra PSPs (auditoría completa)
+model PSPAttempt {
+  id                  String           @id @default(cuid())
+  transactionId       String
+  transaction         Transaction      @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  // PSP
+  pspProvider         PSPProvider
+  isPrimary           Boolean          @default(true)
+
+  // Request y Response (mock)
+  requestPayload      Json
+  responsePayload     Json?
+
+  // Resultado
+  status              PSPAttemptStatus
+  statusCode          Int?
+  errorMessage        String?
+
+  // Métricas
+  latencyMs           Int?
+
+  // Identificadores del PSP
+  pspChargeId         String?
+  pspTransactionId    String?
+
+  // Timestamps
+  createdAt           DateTime         @default(now())
+
+  @@index([transactionId])
+  @@index([pspProvider])
+  @@index([status])
+  @@index([createdAt])
+  @@map("psp_attempts")
+}

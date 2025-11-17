@@ -1,0 +1,53 @@
+services:
+  # PostgreSQL Database
+  - type: pserv
+    name: kira-payment-db
+    env: docker
+    plan: starter
+    region: oregon
+    dockerfilePath: ./Dockerfile.postgres
+    databases:
+      - name: kira_payments
+        databaseName: kira_payments
+        user: postgres
+
+  # API Backend
+  - type: web
+    name: kira-payment-api
+    env: node
+    region: oregon
+    plan: starter
+    buildCommand: npm install && npx prisma generate && npm run build
+    startCommand: npx prisma migrate deploy && npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        fromDatabase:
+          name: kira-payment-db
+          property: connectionString
+      - key: CORS_ORIGIN
+        value: "*"
+      - key: BASE_URL
+        sync: false
+      - key: CHECKOUT_BASE_URL
+        value: https://pay.kira.com
+      - key: FX_SERVICE_BASE_RATE
+        value: 18.5
+      - key: FX_SERVICE_JITTER_PERCENT
+        value: 2.0
+      - key: STRIPE_MOCK_SUCCESS_RATE
+        value: 0.85
+      - key: ADYEN_MOCK_SUCCESS_RATE
+        value: 0.80
+      - key: PSP_MOCK_LATENCY_MS_MIN
+        value: 100
+      - key: PSP_MOCK_LATENCY_MS_MAX
+        value: 500
+      - key: CIRCUIT_BREAKER_FAILURE_THRESHOLD
+        value: 5
+      - key: CIRCUIT_BREAKER_TIMEOUT_MS
+        value: 60000
