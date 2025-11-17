@@ -12,7 +12,7 @@ export class HealthController {
    * GET /health
    * Healthcheck del servicio
    */
-  check = async (req: Request, res: Response): Promise<void> => {
+  check = async (_req: Request, res: Response): Promise<void> => {
     try {
       // Verificar conexión a la base de datos
       await this.prisma.$queryRaw`SELECT 1`;

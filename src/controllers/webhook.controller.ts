@@ -19,7 +19,7 @@ export class WebhookController {
     next: NextFunction
   ): Promise<void> => {
     try {
-      const { provider, eventType, eventId, data } = req.body;
+      const { provider, eventType, eventId: _eventId, data } = req.body;
 
       console.log(`[Webhook] Received ${eventType} from ${provider}:`, data);
 
