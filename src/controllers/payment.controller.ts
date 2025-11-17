@@ -111,7 +111,7 @@ export class PaymentController {
           amountMxn: calculation.recipientAmountMxn,
           fxRateApplied: calculation.fxRateWithMarkup,
           feesTotalUsd: calculation.fees.totalFeesUsd,
-          metadata: metadata || null,
+          metadata: metadata || undefined,
         },
       });
 
