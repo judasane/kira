@@ -111,7 +111,7 @@ export class PaymentController {
           amountMxn: calculation.recipientAmountMxn,
           fxRateApplied: calculation.fxRateWithMarkup,
           feesTotalUsd: calculation.fees.totalFeesUsd,
-          metadata: metadata || null,
+          metadata: metadata as any,
         },
       });
 
@@ -119,9 +119,9 @@ export class PaymentController {
       const chargeRequest: PSPChargeRequest = {
         amount: Math.round(calculation.totalChargeUsd * 100), // En centavos
         currency: 'usd',
-        token: cardToken,
-        idempotencyKey,
-        metadata,
+        token: cardToken as string,
+        idempotencyKey: idempotencyKey as string,
+        metadata: metadata as any,
       };
 
       const orchestrationResult = await this.orchestrationService.executeCharge(

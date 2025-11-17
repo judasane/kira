@@ -43,7 +43,7 @@ export class PaymentLinkController {
           description: description || null,
           status: PaymentLinkStatus.ACTIVE,
           expiresAt: expiresAt ? new Date(expiresAt) : null,
-          feeConfigOverride: feeConfigOverride || null,
+          feeConfigOverride: feeConfigOverride || undefined,
         },
       });
 
