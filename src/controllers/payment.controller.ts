@@ -95,7 +95,7 @@ export class PaymentController {
 
       // Calcular fees con FX rate actual
       const calculation = await feeCalculationService.calculate(
-        paymentLink.amountUsd,
+        paymentLink.amountUsd.toNumber(),
         feeConfig,
         isFirstTx
       );
@@ -195,9 +195,9 @@ export class PaymentController {
     }
 
     return {
-      fixedFeeUsd: defaultConfig.fixedFeeUsd,
-      variableFeePercent: defaultConfig.variableFeePercent,
-      fxMarkupPercent: defaultConfig.fxMarkupPercent,
+      fixedFeeUsd: defaultConfig.fixedFeeUsd.toNumber(),
+      variableFeePercent: defaultConfig.variableFeePercent.toNumber(),
+      fxMarkupPercent: defaultConfig.fxMarkupPercent.toNumber(),
       firstTxFreeCount: defaultConfig.firstTxFreeCount,
     };
   }
