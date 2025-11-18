@@ -1,11 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
-import { PrismaClient, PaymentLinkStatus, Prisma } from '@prisma/client';
+import { PrismaClient, PaymentLinkStatus } from '@prisma/client';
 import { CreatePaymentLinkDTO } from '../validators/payment-link.validator';
 import { feeCalculationService } from '../services/fee-calculation.service';
-import { FeeConfiguration } from '../types';
 import { config } from '../config';
-
-type FeeConfigFromPrisma = Prisma.FeeConfigGetPayload<object>;
+import { getFeeConfig } from '../utils/fee-config.utils';
 
 export class PaymentLinkController {
   private prisma: PrismaClient;
@@ -128,7 +126,7 @@ export class PaymentLinkController {
       // Calcular preview de fees si se solicitó
       if (withFeePreview) {
         // Obtener fee config (override o default del merchant)
-        const feeConfig = this.getFeeConfig(paymentLink);
+        const feeConfig = getFeeConfig(paymentLink);
 
         // Contar transacciones del merchant para incentivo
         const txCount = await this.prisma.transaction.count({
@@ -167,34 +165,4 @@ export class PaymentLinkController {
       next(error);
     }
   };
-
-  /**
-   * Helper: Obtiene la configuración de fees (override o default)
-   */
-  private getFeeConfig(paymentLink: {
-    feeConfigOverride?: unknown | null;
-    merchant: { feeConfigs: FeeConfigFromPrisma[] };
-  }): FeeConfiguration {
-    if (paymentLink.feeConfigOverride) {
-      return paymentLink.feeConfigOverride as FeeConfiguration;
-    }
-
-    const defaultConfig = paymentLink.merchant.feeConfigs[0];
-    if (!defaultConfig) {
-      // Fallback a valores por defecto
-      return {
-        fixedFeeUsd: 0.30,
-        variableFeePercent: 0.029,
-        fxMarkupPercent: 0.015,
-        firstTxFreeCount: 0,
-      };
-    }
-
-    return {
-      fixedFeeUsd: Number(defaultConfig.fixedFeeUsd),
-      variableFeePercent: Number(defaultConfig.variableFeePercent),
-      fxMarkupPercent: Number(defaultConfig.fxMarkupPercent),
-      firstTxFreeCount: defaultConfig.firstTxFreeCount,
-    };
-  }
 }

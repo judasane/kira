@@ -3,9 +3,8 @@ import { PrismaClient, PaymentLinkStatus, TransactionStatus, Prisma } from '@pri
 import { ProcessPaymentDTO } from '../validators/payment-link.validator';
 import { feeCalculationService } from '../services/fee-calculation.service';
 import { PSPOrchestrationService } from '../services/psp-orchestration.service';
-import { FeeConfiguration, PSPChargeRequest } from '../types';
-
-type FeeConfigFromPrisma = Prisma.FeeConfigGetPayload<object>;
+import { PSPChargeRequest } from '../types';
+import { getFeeConfig } from '../utils/fee-config.utils';
 
 export class PaymentController {
   private prisma: PrismaClient;
@@ -81,7 +80,7 @@ export class PaymentController {
       }
 
       // 3. Obtener fee config y calcular fees
-      const feeConfig = this.getFeeConfig(paymentLink);
+      const feeConfig = getFeeConfig(paymentLink);
 
       // Contar transacciones para incentivo
       const txCount = await this.prisma.transaction.count({
@@ -177,33 +176,4 @@ export class PaymentController {
       next(error);
     }
   };
-
-  /**
-   * Helper: Obtiene la configuración de fees
-   */
-  private getFeeConfig(paymentLink: {
-    feeConfigOverride?: unknown | null;
-    merchant: { feeConfigs: FeeConfigFromPrisma[] };
-  }): FeeConfiguration {
-    if (paymentLink.feeConfigOverride) {
-      return paymentLink.feeConfigOverride as FeeConfiguration;
-    }
-
-    const defaultConfig = paymentLink.merchant.feeConfigs[0];
-    if (!defaultConfig) {
-      return {
-        fixedFeeUsd: 0.30,
-        variableFeePercent: 0.029,
-        fxMarkupPercent: 0.015,
-        firstTxFreeCount: 0,
-      };
-    }
-
-    return {
-      fixedFeeUsd: Number(defaultConfig.fixedFeeUsd),
-      variableFeePercent: Number(defaultConfig.variableFeePercent),
-      fxMarkupPercent: Number(defaultConfig.fxMarkupPercent),
-      firstTxFreeCount: defaultConfig.firstTxFreeCount,
-    };
-  }
 }
