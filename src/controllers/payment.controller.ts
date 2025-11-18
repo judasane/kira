@@ -1,9 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
-import { PrismaClient, PaymentLinkStatus, TransactionStatus } from '@prisma/client';
+import { PrismaClient, PaymentLinkStatus, TransactionStatus, Prisma } from '@prisma/client';
 import { ProcessPaymentDTO } from '../validators/payment-link.validator';
 import { feeCalculationService } from '../services/fee-calculation.service';
 import { PSPOrchestrationService } from '../services/psp-orchestration.service';
-import { FeeConfiguration, PSPChargeRequest } from '../types';
+import { PSPChargeRequest } from '../types';
+import { getFeeConfig } from '../utils/fee-config.utils';
 
 export class PaymentController {
   private prisma: PrismaClient;
@@ -19,7 +20,7 @@ export class PaymentController {
    * Procesar un pago sobre un payment link
    */
   processPayment = async (
-    req: Request<{ id: string }, {}, ProcessPaymentDTO>,
+    req: Request<{ id: string }, object, ProcessPaymentDTO>,
     res: Response,
     next: NextFunction
   ): Promise<void> => {
@@ -79,7 +80,7 @@ export class PaymentController {
       }
 
       // 3. Obtener fee config y calcular fees
-      const feeConfig = this.getFeeConfig(paymentLink);
+      const feeConfig = getFeeConfig(paymentLink);
 
       // Contar transacciones para incentivo
       const txCount = await this.prisma.transaction.count({
@@ -95,7 +96,7 @@ export class PaymentController {
 
       // Calcular fees con FX rate actual
       const calculation = await feeCalculationService.calculate(
-        paymentLink.amountUsd,
+        Number(paymentLink.amountUsd),
         feeConfig,
         isFirstTx
       );
@@ -111,7 +112,7 @@ export class PaymentController {
           amountMxn: calculation.recipientAmountMxn,
           fxRateApplied: calculation.fxRateWithMarkup,
           feesTotalUsd: calculation.fees.totalFeesUsd,
-          metadata: metadata || null,
+          metadata: metadata as Prisma.JsonObject,
         },
       });
 
@@ -119,9 +120,9 @@ export class PaymentController {
       const chargeRequest: PSPChargeRequest = {
         amount: Math.round(calculation.totalChargeUsd * 100), // En centavos
         currency: 'usd',
-        token: cardToken,
-        idempotencyKey,
-        metadata,
+        token: cardToken as string,
+        idempotencyKey: idempotencyKey as string,
+        metadata: metadata as Prisma.JsonObject,
       };
 
       const orchestrationResult = await this.orchestrationService.executeCharge(
@@ -175,30 +176,4 @@ export class PaymentController {
       next(error);
     }
   };
-
-  /**
-   * Helper: Obtiene la configuración de fees
-   */
-  private getFeeConfig(paymentLink: any): FeeConfiguration {
-    if (paymentLink.feeConfigOverride) {
-      return paymentLink.feeConfigOverride as FeeConfiguration;
-    }
-
-    const defaultConfig = paymentLink.merchant.feeConfigs[0];
-    if (!defaultConfig) {
-      return {
-        fixedFeeUsd: 0.30,
-        variableFeePercent: 0.029,
-        fxMarkupPercent: 0.015,
-        firstTxFreeCount: 0,
-      };
-    }
-
-    return {
-      fixedFeeUsd: defaultConfig.fixedFeeUsd,
-      variableFeePercent: defaultConfig.variableFeePercent,
-      fxMarkupPercent: defaultConfig.fxMarkupPercent,
-      firstTxFreeCount: defaultConfig.firstTxFreeCount,
-    };
-  }
 }

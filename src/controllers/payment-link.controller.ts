@@ -2,8 +2,8 @@ import { Request, Response, NextFunction } from 'express';
 import { PrismaClient, PaymentLinkStatus } from '@prisma/client';
 import { CreatePaymentLinkDTO } from '../validators/payment-link.validator';
 import { feeCalculationService } from '../services/fee-calculation.service';
-import { FeeConfiguration } from '../types';
 import { config } from '../config';
+import { getFeeConfig } from '../utils/fee-config.utils';
 
 export class PaymentLinkController {
   private prisma: PrismaClient;
@@ -17,7 +17,7 @@ export class PaymentLinkController {
    * Crear un nuevo payment link
    */
   createPaymentLink = async (
-    req: Request<{}, {}, CreatePaymentLinkDTO>,
+    req: Request<object, object, CreatePaymentLinkDTO>,
     res: Response,
     next: NextFunction
   ): Promise<void> => {
@@ -43,7 +43,7 @@ export class PaymentLinkController {
           description: description || null,
           status: PaymentLinkStatus.ACTIVE,
           expiresAt: expiresAt ? new Date(expiresAt) : null,
-          feeConfigOverride: feeConfigOverride || null,
+          feeConfigOverride: feeConfigOverride || undefined,
         },
       });
 
@@ -71,7 +71,7 @@ export class PaymentLinkController {
    * Obtener un payment link con preview de fees
    */
   getPaymentLink = async (
-    req: Request<{ id: string }, {}, {}, { withFeePreview?: string }>,
+    req: Request<{ id: string }, object, object, { withFeePreview?: string }>,
     res: Response,
     next: NextFunction
   ): Promise<void> => {
@@ -111,7 +111,7 @@ export class PaymentLinkController {
 
       // Construir response base
       const checkoutUrl = `${config.checkoutBaseUrl}/checkout/${paymentLink.id}`;
-      const response: any = {
+      const response: Record<string, unknown> = {
         id: paymentLink.id,
         merchantId: paymentLink.merchantId,
         status: paymentLink.status,
@@ -126,7 +126,7 @@ export class PaymentLinkController {
       // Calcular preview de fees si se solicitó
       if (withFeePreview) {
         // Obtener fee config (override o default del merchant)
-        const feeConfig = this.getFeeConfig(paymentLink);
+        const feeConfig = getFeeConfig(paymentLink);
 
         // Contar transacciones del merchant para incentivo
         const txCount = await this.prisma.transaction.count({
@@ -142,7 +142,7 @@ export class PaymentLinkController {
 
         // Calcular preview
         const calculation = await feeCalculationService.preview(
-          paymentLink.amountUsd,
+          Number(paymentLink.amountUsd),
           feeConfig,
           isFirstTx
         );
@@ -165,31 +165,4 @@ export class PaymentLinkController {
       next(error);
     }
   };
-
-  /**
-   * Helper: Obtiene la configuración de fees (override o default)
-   */
-  private getFeeConfig(paymentLink: any): FeeConfiguration {
-    if (paymentLink.feeConfigOverride) {
-      return paymentLink.feeConfigOverride as FeeConfiguration;
-    }
-
-    const defaultConfig = paymentLink.merchant.feeConfigs[0];
-    if (!defaultConfig) {
-      // Fallback a valores por defecto
-      return {
-        fixedFeeUsd: 0.30,
-        variableFeePercent: 0.029,
-        fxMarkupPercent: 0.015,
-        firstTxFreeCount: 0,
-      };
-    }
-
-    return {
-      fixedFeeUsd: defaultConfig.fixedFeeUsd,
-      variableFeePercent: defaultConfig.variableFeePercent,
-      fxMarkupPercent: defaultConfig.fxMarkupPercent,
-      firstTxFreeCount: defaultConfig.firstTxFreeCount,
-    };
-  }
 }

@@ -1,4 +1,10 @@
-import { PSPProvider, PSPAttemptStatus } from '@prisma/client';
+import { PSPProvider, PSPAttemptStatus, Prisma } from '@prisma/client';
+
+// ============================================================================
+// Prisma Types
+// ============================================================================
+
+export type FeeConfigFromPrisma = Prisma.FeeConfigGetPayload<object>;
 
 // ============================================================================
 // FX Service Types

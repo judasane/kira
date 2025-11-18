@@ -1,0 +1,166 @@
+name: 🦉 Flatten Repository
+
+on:
+  push:
+    branches:
+      - main
+      - development
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  flatten-and-commit:
+    name: Generate Flattened Repository File
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@0080882f6c36860b6ba35c610c98ce87d4e2f26f # v2.10.2
+        with:
+          egress-policy: audit
+
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          token: ${{ secrets.PAT_FLATTEN || github.token }}
+          # Use PAT_FLATTEN if available for protected branches, otherwise use default GITHUB_TOKEN
+
+      - name: Generate flattened file
+        run: |
+          echo "🔍 Starting flatten process..."
+          
+          echo "📋 Files currently tracked by git:"
+          git ls-files 'flattened*.txt' 'repository_flattened.txt' 'flattened_output.txt' 2>/dev/null || echo "No flattened files in git"
+          
+          # Generate filename with repo name and timestamp
+          REPO_NAME=$(echo "$GITHUB_REPOSITORY" | cut -d'/' -f2)
+          TIMESTAMP=$(date +"%Y%m%d-%H%M%S")
+          OUTPUT_FILE="flattened_${REPO_NAME}_${TIMESTAMP}.txt"
+          
+          echo "📝 Output file will be: $OUTPUT_FILE"
+          
+          # Detect if this is a submodule or main project
+          IS_SUBMODULE="false"
+          if [ ! -f .gitmodules ]; then
+            IS_SUBMODULE="true"
+          fi
+          
+          EXCLUDE_EXTENSIONS="map,tsbuildinfo,log,lock,db,sqlite,sqlite3,dump,lcov,png,jpg,jpeg,gif,ico,zip,gz,pdf,mp4,svg"
+          EXCLUDE_FILES="package-lock.json,yarn.lock,pnpm-lock.yaml"
+          EXCLUDE_DIRS="node_modules,bower_components,dist,build,out,.next,.nuxt,.svelte-kit,coverage,.idea,.vscode,.fleet,.venv,venv"
+          
+          echo "==================================" > "$OUTPUT_FILE"
+          echo "FLATTENED: $REPO_NAME" >> "$OUTPUT_FILE"
+          echo "Type: $([ "$IS_SUBMODULE" = "true" ] && echo "Submodule" || echo "Main Project")" >> "$OUTPUT_FILE"
+          echo "Generated at: $(date)" >> "$OUTPUT_FILE"
+          echo "Branch: ${GITHUB_REF##*/}" >> "$OUTPUT_FILE"
+          echo "Commit: ${GITHUB_SHA}" >> "$OUTPUT_FILE"
+          echo "Repository: $GITHUB_REPOSITORY" >> "$OUTPUT_FILE"
+          echo "==================================" >> "$OUTPUT_FILE"
+          echo "" >> "$OUTPUT_FILE"
+          
+          # List submodules if they exist (main project only)
+          if [ -f .gitmodules ]; then
+            echo "--- GIT SUBMODULES ---" >> "$OUTPUT_FILE"
+            echo "Submodules are managed independently." >> "$OUTPUT_FILE"
+            echo "To see their flattened code, check their respective repositories." >> "$OUTPUT_FILE"
+            echo "" >> "$OUTPUT_FILE"
+            git config --file .gitmodules --get-regexp path | awk '{ print $2 }' | while read -r submodule; do
+              if ls "$submodule"/flattened_*.txt 1> /dev/null 2>&1; then
+                echo "  - $submodule (has flattened files)" >> "$OUTPUT_FILE"
+              else
+                echo "  - $submodule" >> "$OUTPUT_FILE"
+              fi
+            done
+            echo "------------------------------------" >> "$OUTPUT_FILE"
+            echo "" >> "$OUTPUT_FILE"
+          fi
+          
+          exclude_ext_pattern=$(echo "$EXCLUDE_EXTENSIONS" | sed 's/,/|/g')
+          exclude_files_pattern="$(echo "$EXCLUDE_FILES" | sed 's/,/|/g')"
+          exclude_dirs_pattern=$(echo "$EXCLUDE_DIRS" | sed 's/,/|/g')
+          
+          echo "🔎 Scanning repository files..."
+          FILE_COUNT=0
+          
+          git ls-files | \
+          grep -vE "^($exclude_dirs_pattern)/" | \
+          grep -vE "\.($exclude_ext_pattern)$" | \
+          grep -vE "^($exclude_files_pattern)$" | \
+          grep -vE "^flattened.*\.txt$" | \
+          grep -vE "^repository_flattened\.txt$" | \
+          while IFS= read -r file; do
+              if [ -f "$file" ]; then
+                echo "--- START OF FILE: $file ---" >> "$OUTPUT_FILE"
+                cat "$file" >> "$OUTPUT_FILE"
+                echo -e "\n--- END OF FILE: $file ---\n" >> "$OUTPUT_FILE"
+                FILE_COUNT=$((FILE_COUNT + 1))
+              fi
+          done
+          
+          echo "✅ Repository flattened into $OUTPUT_FILE"
+          
+          # Verify file was created
+          if [ -f "$OUTPUT_FILE" ]; then
+            FILE_SIZE=$(wc -c < "$OUTPUT_FILE")
+            echo "📊 File created successfully: $FILE_SIZE bytes"
+            echo "📄 First few lines:"
+            head -n 10 "$OUTPUT_FILE"
+          else
+            echo "❌ ERROR: Output file was not created!"
+            exit 1
+          fi
+          
+          # Save variables for later steps
+          echo "OUTPUT_FILE=$OUTPUT_FILE" >> $GITHUB_ENV
+          echo "IS_SUBMODULE=$IS_SUBMODULE" >> $GITHUB_ENV
+
+      - name: Commit and push flattened file
+        run: |
+          echo "🔧 Configuring git..."
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          
+          echo "📋 Files in working directory BEFORE cleanup:"
+          ls -lh flattened*.txt repository_flattened.txt flattened_output.txt 2>/dev/null || echo "No flattened files found"
+          
+          echo "🗑️ Removing ALL old flattened files except the new one..."
+          # Use git ls-files to find all tracked flattened files
+          git ls-files 'flattened*.txt' 'repository_flattened.txt' 'flattened_output.txt' 2>/dev/null | while read -r old_file; do
+            if [ "$old_file" != "$OUTPUT_FILE" ]; then
+              echo "  Removing from git: $old_file"
+              git rm -f "$old_file"
+            fi
+          done
+          
+          echo "📋 Files in working directory AFTER cleanup:"
+          ls -lh flattened*.txt 2>/dev/null || echo "Only new file should remain"
+          
+          echo "➕ Adding new flattened file: $OUTPUT_FILE"
+          git add -f "$OUTPUT_FILE"
+          
+          echo "📊 Git diff summary:"
+          git diff --staged --stat
+          
+          echo "📊 Detailed changes:"
+          git status --short
+          
+          if git diff --staged --quiet; then
+            echo "⚠️  No changes to commit."
+          else
+            echo "💾 Committing changes..."
+            if [ "$IS_SUBMODULE" = "true" ]; then
+              git commit -m "docs: Update flattened repository file [skip ci]" -m "Generated at: $(date)" -m "Auto-generated by GitHub Actions."
+            else
+              git commit -m "docs: Update flattened repository file" -m "Generated at: $(date)" -m "This commit was generated by a GitHub Action."
+            fi
+            
+            echo "🚀 Pushing to remote..."
+            git push
+            echo "✅ Changes pushed successfully!"
+          fi

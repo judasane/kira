@@ -63,12 +63,12 @@ model Merchant {
 model FeeConfig {
   id                 String   @id @default(cuid())
   merchantId         String
-  merchant           Merchant @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  merchant           Merchant @relation(fields: [merchantId], references: [id], onDelete: Restrict)
 
-  // Fees
-  fixedFeeUsd        Float    @default(0.30)
-  variableFeePercent Float    @default(0.029) // 2.9%
-  fxMarkupPercent    Float    @default(0.015) // 1.5%
+  // Fees (usando Decimal para precisión financiera)
+  fixedFeeUsd        Decimal  @default(0.30) @db.Decimal(10, 2)
+  variableFeePercent Decimal  @default(0.029) @db.Decimal(5, 4) // 2.9%
+  fxMarkupPercent    Decimal  @default(0.015) @db.Decimal(5, 4) // 1.5%
 
   // Incentivos
   firstTxFreeCount   Int      @default(0)
@@ -86,11 +86,11 @@ model FeeConfig {
 model PaymentLink {
   id          String            @id @default(cuid())
   merchantId  String
-  merchant    Merchant          @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  merchant    Merchant          @relation(fields: [merchantId], references: [id], onDelete: Restrict)
 
   // Información del link
   status      PaymentLinkStatus @default(ACTIVE)
-  amountUsd   Float
+  amountUsd   Decimal           @db.Decimal(10, 2)
   description String?
 
   // Expiración
@@ -127,11 +127,11 @@ model Transaction {
   // PSP usado finalmente
   pspProvider     PSPProvider?
 
-  // Montos
-  amountUsd       Float
-  amountMxn       Float?
-  fxRateApplied   Float?
-  feesTotalUsd    Float?
+  // Montos (usando Decimal para precisión financiera)
+  amountUsd       Decimal           @db.Decimal(10, 2)
+  amountMxn       Decimal?          @db.Decimal(10, 2)
+  fxRateApplied   Decimal?          @db.Decimal(10, 4)
+  feesTotalUsd    Decimal?          @db.Decimal(10, 2)
 
   // Idempotencia
   idempotencyKey  String?           @unique
@@ -154,7 +154,6 @@ model Transaction {
 
   @@index([paymentLinkId])
   @@index([status])
-  @@index([idempotencyKey])
   @@index([createdAt])
   @@map("transactions")
 }

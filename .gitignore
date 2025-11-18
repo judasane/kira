@@ -36,7 +36,7 @@ yarn-error.log*
 pnpm-debug.log*
 
 # Prisma
-prisma/migrations/**/migration.sql
+# (migrations should be committed to version control)
 
 # Testing
 coverage/
