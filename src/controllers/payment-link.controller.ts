@@ -1,9 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
-import { PrismaClient, PaymentLinkStatus, FeeConfig } from '@prisma/client';
+import { PrismaClient, PaymentLinkStatus } from '@prisma/client';
 import { CreatePaymentLinkDTO } from '../validators/payment-link.validator';
 import { feeCalculationService } from '../services/fee-calculation.service';
-import { FeeConfiguration } from '../types';
 import { config } from '../config';
+import { getFeeConfig } from '../utils/fee-config.utils';
 
 export class PaymentLinkController {
   private prisma: PrismaClient;
@@ -24,7 +24,6 @@ export class PaymentLinkController {
     try {
       const { merchantId, amountUsd, description, expiresAt, feeConfigOverride } = req.body;
 
-      // Validar que el merchant existe
       const merchant = await this.prisma.merchant.findUnique({
         where: { id: merchantId },
       });
@@ -35,7 +34,6 @@ export class PaymentLinkController {
         throw error;
       }
 
-      // Crear el payment link
       const paymentLink = await this.prisma.paymentLink.create({
         data: {
           merchantId,
@@ -47,14 +45,13 @@ export class PaymentLinkController {
         },
       });
 
-      // Construir URL del checkout
       const checkoutUrl = `${config.checkoutBaseUrl}/checkout/${paymentLink.id}`;
 
       res.status(201).json({
         id: paymentLink.id,
         merchantId: paymentLink.merchantId,
         status: paymentLink.status,
-        amountUsd: paymentLink.amountUsd.toNumber(),
+        amountUsd: Number(paymentLink.amountUsd),
         description: paymentLink.description,
         expiresAt: paymentLink.expiresAt,
         createdAt: paymentLink.createdAt,
@@ -79,7 +76,6 @@ export class PaymentLinkController {
       const { id } = req.params;
       const withFeePreview = req.query.withFeePreview !== 'false';
 
-      // Obtener el payment link
       const paymentLink = await this.prisma.paymentLink.findUnique({
         where: { id },
         include: {
@@ -100,7 +96,6 @@ export class PaymentLinkController {
         throw error;
       }
 
-      // Validar que no esté expirado
       if (paymentLink.expiresAt && paymentLink.expiresAt < new Date()) {
         await this.prisma.paymentLink.update({
           where: { id },
@@ -109,13 +104,12 @@ export class PaymentLinkController {
         paymentLink.status = PaymentLinkStatus.EXPIRED;
       }
 
-      // Construir response base
       const checkoutUrl = `${config.checkoutBaseUrl}/checkout/${paymentLink.id}`;
       const response: Record<string, unknown> = {
         id: paymentLink.id,
         merchantId: paymentLink.merchantId,
         status: paymentLink.status,
-        amountUsd: paymentLink.amountUsd.toNumber(),
+        amountUsd: Number(paymentLink.amountUsd),
         description: paymentLink.description,
         expiresAt: paymentLink.expiresAt,
         createdAt: paymentLink.createdAt,
@@ -123,12 +117,9 @@ export class PaymentLinkController {
         checkoutUrl,
       };
 
-      // Calcular preview de fees si se solicitó
       if (withFeePreview) {
-        // Obtener fee config (override o default del merchant)
-        const feeConfig = this.getFeeConfig(paymentLink);
+        const feeConfig = getFeeConfig(paymentLink);
 
-        // Contar transacciones del merchant para incentivo
         const txCount = await this.prisma.transaction.count({
           where: {
             paymentLink: {
@@ -140,9 +131,8 @@ export class PaymentLinkController {
 
         const isFirstTx = txCount < feeConfig.firstTxFreeCount;
 
-        // Calcular preview
         const calculation = await feeCalculationService.preview(
-          paymentLink.amountUsd.toNumber(),
+          Number(paymentLink.amountUsd),
           feeConfig,
           isFirstTx
         );
@@ -165,34 +155,4 @@ export class PaymentLinkController {
       next(error);
     }
   };
-
-  /**
-   * Helper: Obtiene la configuración de fees (override o default)
-   */
-  private getFeeConfig(paymentLink: {
-    feeConfigOverride?: unknown | null;
-    merchant: { feeConfigs: FeeConfig[] };
-  }): FeeConfiguration {
-    if (paymentLink.feeConfigOverride) {
-      return paymentLink.feeConfigOverride as FeeConfiguration;
-    }
-
-    const defaultConfig = paymentLink.merchant.feeConfigs[0];
-    if (!defaultConfig) {
-      // Fallback a valores por defecto
-      return {
-        fixedFeeUsd: 0.30,
-        variableFeePercent: 0.029,
-        fxMarkupPercent: 0.015,
-        firstTxFreeCount: 0,
-      };
-    }
-
-    return {
-      fixedFeeUsd: defaultConfig.fixedFeeUsd.toNumber(),
-      variableFeePercent: defaultConfig.variableFeePercent.toNumber(),
-      fxMarkupPercent: defaultConfig.fxMarkupPercent.toNumber(),
-      firstTxFreeCount: defaultConfig.firstTxFreeCount,
-    };
-  }
 }

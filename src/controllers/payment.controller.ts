@@ -4,12 +4,12 @@ import {
   PaymentLinkStatus,
   TransactionStatus,
   Prisma,
-  FeeConfig,
 } from '@prisma/client';
 import { ProcessPaymentDTO } from '../validators/payment-link.validator';
 import { feeCalculationService } from '../services/fee-calculation.service';
 import { PSPOrchestrationService } from '../services/psp-orchestration.service';
-import { FeeConfiguration, PSPChargeRequest } from '../types';
+import { PSPChargeRequest } from '../types';
+import { getFeeConfig } from '../utils/fee-config.utils';
 
 export class PaymentController {
   private prisma: PrismaClient;
@@ -33,19 +33,16 @@ export class PaymentController {
       const { id: paymentLinkId } = req.params;
       const { cardToken, pspProvider, idempotencyKey, metadata } = req.body;
 
-      // 1. Validar idempotencia
       const existingTx = await this.prisma.transaction.findUnique({
         where: { idempotencyKey },
       });
 
       if (existingTx) {
-        // Ya existe, retornar la transacción existente
         const error = new Error('Payment already processed with this idempotency key');
         error.name = 'ConflictError';
         throw error;
       }
 
-      // 2. Obtener y validar el payment link
       const paymentLink = await this.prisma.paymentLink.findUnique({
         where: { id: paymentLinkId },
         include: {
@@ -66,14 +63,12 @@ export class PaymentController {
         throw error;
       }
 
-      // Validar estado del link
       if (paymentLink.status !== PaymentLinkStatus.ACTIVE) {
         const error = new Error(`Payment link is not active (status: ${paymentLink.status})`);
         error.name = 'BadRequestError';
         throw error;
       }
 
-      // Validar expiración
       if (paymentLink.expiresAt && paymentLink.expiresAt < new Date()) {
         await this.prisma.paymentLink.update({
           where: { id: paymentLinkId },
@@ -84,10 +79,8 @@ export class PaymentController {
         throw error;
       }
 
-      // 3. Obtener fee config y calcular fees
-      const feeConfig = this.getFeeConfig(paymentLink);
+      const feeConfig = getFeeConfig(paymentLink);
 
-      // Contar transacciones para incentivo
       const txCount = await this.prisma.transaction.count({
         where: {
           paymentLink: {
@@ -99,14 +92,12 @@ export class PaymentController {
 
       const isFirstTx = txCount < feeConfig.firstTxFreeCount;
 
-      // Calcular fees con FX rate actual
       const calculation = await feeCalculationService.calculate(
-        paymentLink.amountUsd.toNumber(),
+        Number(paymentLink.amountUsd),
         feeConfig,
         isFirstTx
       );
 
-      // 4. Crear transacción en estado PENDING
       const transaction = await this.prisma.transaction.create({
         data: {
           paymentLinkId,
@@ -121,9 +112,8 @@ export class PaymentController {
         },
       });
 
-      // 5. Ejecutar orquestación de PSP
       const chargeRequest: PSPChargeRequest = {
-        amount: Math.round(calculation.totalChargeUsd * 100), // En centavos
+        amount: Math.round(calculation.totalChargeUsd * 100),
         currency: 'usd',
         token: cardToken as string,
         idempotencyKey: idempotencyKey as string,
@@ -136,21 +126,13 @@ export class PaymentController {
         transaction.id
       );
 
-      // 6. Persistir intentos de PSP
       await this.orchestrationService.persistAttempts(transaction.id, orchestrationResult.attempts);
 
-      // 7. Actualizar transacción según resultado
       let finalStatus: TransactionStatus;
       let failureReason: string | null = null;
 
       if (orchestrationResult.success) {
         finalStatus = TransactionStatus.COMPLETED;
-
-        // Marcar payment link como completado si se desea (one-time use)
-        // await this.prisma.paymentLink.update({
-        //   where: { id: paymentLinkId },
-        //   data: { status: PaymentLinkStatus.COMPLETED },
-        // });
       } else {
         finalStatus = TransactionStatus.FAILED;
         failureReason =
@@ -166,7 +148,6 @@ export class PaymentController {
         },
       });
 
-      // 8. Retornar respuesta
       res.json({
         transactionId: updatedTransaction.id,
         status: updatedTransaction.status,
@@ -181,33 +162,4 @@ export class PaymentController {
       next(error);
     }
   };
-
-  /**
-   * Helper: Obtiene la configuración de fees
-   */
-  private getFeeConfig(paymentLink: {
-    feeConfigOverride?: unknown | null;
-    merchant: { feeConfigs: FeeConfig[] };
-  }): FeeConfiguration {
-    if (paymentLink.feeConfigOverride) {
-      return paymentLink.feeConfigOverride as FeeConfiguration;
-    }
-
-    const defaultConfig = paymentLink.merchant.feeConfigs[0];
-    if (!defaultConfig) {
-      return {
-        fixedFeeUsd: 0.30,
-        variableFeePercent: 0.029,
-        fxMarkupPercent: 0.015,
-        firstTxFreeCount: 0,
-      };
-    }
-
-    return {
-      fixedFeeUsd: defaultConfig.fixedFeeUsd.toNumber(),
-      variableFeePercent: defaultConfig.variableFeePercent.toNumber(),
-      fxMarkupPercent: defaultConfig.fxMarkupPercent.toNumber(),
-      firstTxFreeCount: defaultConfig.firstTxFreeCount,
-    };
-  }
 }
