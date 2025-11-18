@@ -6,6 +6,27 @@ import { config } from '../../config';
 /**
  * Mock de Adyen PSP.
  * Simula la API de Adyen para crear pagos.
+ *
+ * @example
+ * ```typescript
+ * import { adyenMock } from './services/psp/adyen.mock';
+ *
+ * // Ejecutar un pago
+ * const response = await adyenMock.charge({
+ *   amount: 10000, // $100.00 en centavos
+ *   currency: 'usd',
+ *   token: 'tok_visa',
+ *   idempotencyKey: 'unique_key_123',
+ *   metadata: { orderId: 'order_123' }
+ * });
+ *
+ * if (response.success) {
+ *   console.log('Pago autorizado:', response.chargeId);
+ *   console.log('PSP Reference:', response.transactionId);
+ * } else {
+ *   console.error('Pago rechazado:', response.errorMessage);
+ * }
+ * ```
  */
 export class AdyenMock extends BasePSPMock {
   constructor() {

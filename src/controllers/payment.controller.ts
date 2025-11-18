@@ -6,6 +6,22 @@ import { PSPOrchestrationService } from '../services/psp-orchestration.service';
 import { PSPChargeRequest } from '../types';
 import { getFeeConfig } from '../utils/fee-config.utils';
 
+/**
+ * Controlador para el procesamiento de pagos.
+ * Maneja la ejecución de transacciones sobre payment links con orquestación de PSPs.
+ *
+ * @example
+ * ```typescript
+ * import { PaymentController } from './controllers/payment.controller';
+ * import { PrismaClient } from '@prisma/client';
+ *
+ * const prisma = new PrismaClient();
+ * const controller = new PaymentController(prisma);
+ *
+ * // Usar en un router de Express
+ * router.post('/payment-links/:id/payments', controller.processPayment);
+ * ```
+ */
 export class PaymentController {
   private prisma: PrismaClient;
   private orchestrationService: PSPOrchestrationService;
@@ -18,6 +34,10 @@ export class PaymentController {
   /**
    * POST /payment-links/:id/payments
    * Procesar un pago sobre un payment link
+   *
+   * @param req - Request de Express con id en params y ProcessPaymentDTO en body
+   * @param res - Response de Express
+   * @param next - NextFunction para manejo de errores
    */
   processPayment = async (
     req: Request<{ id: string }, object, ProcessPaymentDTO>,

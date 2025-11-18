@@ -2,6 +2,22 @@ import { Request, Response, NextFunction } from 'express';
 import { PrismaClient, TransactionStatus } from '@prisma/client';
 import { PSPWebhookDTO } from '../validators/payment-link.validator';
 
+/**
+ * Controlador para recibir y procesar webhooks de PSPs.
+ * Maneja notificaciones asíncronas de estado de transacciones.
+ *
+ * @example
+ * ```typescript
+ * import { WebhookController } from './controllers/webhook.controller';
+ * import { PrismaClient } from '@prisma/client';
+ *
+ * const prisma = new PrismaClient();
+ * const controller = new WebhookController(prisma);
+ *
+ * // Usar en un router de Express
+ * router.post('/webhooks/psp', controller.handlePSPWebhook);
+ * ```
+ */
 export class WebhookController {
   private prisma: PrismaClient;
 
@@ -12,6 +28,10 @@ export class WebhookController {
   /**
    * POST /webhooks/psp
    * Recibe webhooks de PSPs mock
+   *
+   * @param req - Request de Express con PSPWebhookDTO en body
+   * @param res - Response de Express
+   * @param next - NextFunction para manejo de errores
    */
   handlePSPWebhook = async (
     req: Request<object, object, PSPWebhookDTO>,
