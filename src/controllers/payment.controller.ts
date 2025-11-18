@@ -1,5 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
-import { PrismaClient, PaymentLinkStatus, TransactionStatus, Prisma } from '@prisma/client';
+import {
+  PrismaClient,
+  PaymentLinkStatus,
+  TransactionStatus,
+  Prisma,
+  FeeConfig,
+} from '@prisma/client';
 import { ProcessPaymentDTO } from '../validators/payment-link.validator';
 import { feeCalculationService } from '../services/fee-calculation.service';
 import { PSPOrchestrationService } from '../services/psp-orchestration.service';
@@ -9,9 +15,9 @@ export class PaymentController {
   private prisma: PrismaClient;
   private orchestrationService: PSPOrchestrationService;
 
-  constructor(prisma: PrismaClient) {
+  constructor(prisma: PrismaClient, orchestrationService: PSPOrchestrationService) {
     this.prisma = prisma;
-    this.orchestrationService = new PSPOrchestrationService(prisma);
+    this.orchestrationService = orchestrationService;
   }
 
   /**
@@ -166,10 +172,10 @@ export class PaymentController {
         status: updatedTransaction.status,
         paymentLinkId,
         pspProvider: orchestrationResult.finalProvider,
-        amountUsd: updatedTransaction.amountUsd,
-        recipientAmountMxn: updatedTransaction.amountMxn,
-        fxRateApplied: updatedTransaction.fxRateApplied,
-        totalFeesUsd: updatedTransaction.feesTotalUsd,
+        amountUsd: updatedTransaction.amountUsd.toNumber(),
+        recipientAmountMxn: updatedTransaction.amountMxn?.toNumber(),
+        fxRateApplied: updatedTransaction.fxRateApplied?.toNumber(),
+        totalFeesUsd: updatedTransaction.feesTotalUsd?.toNumber(),
       });
     } catch (error) {
       next(error);
@@ -181,7 +187,7 @@ export class PaymentController {
    */
   private getFeeConfig(paymentLink: {
     feeConfigOverride?: unknown | null;
-    merchant: { feeConfigs: FeeConfiguration[] };
+    merchant: { feeConfigs: FeeConfig[] };
   }): FeeConfiguration {
     if (paymentLink.feeConfigOverride) {
       return paymentLink.feeConfigOverride as FeeConfiguration;

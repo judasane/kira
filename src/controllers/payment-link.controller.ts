@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { PrismaClient, PaymentLinkStatus } from '@prisma/client';
+import { PrismaClient, PaymentLinkStatus, FeeConfig } from '@prisma/client';
 import { CreatePaymentLinkDTO } from '../validators/payment-link.validator';
 import { feeCalculationService } from '../services/fee-calculation.service';
 import { FeeConfiguration } from '../types';
@@ -54,7 +54,7 @@ export class PaymentLinkController {
         id: paymentLink.id,
         merchantId: paymentLink.merchantId,
         status: paymentLink.status,
-        amountUsd: paymentLink.amountUsd,
+        amountUsd: paymentLink.amountUsd.toNumber(),
         description: paymentLink.description,
         expiresAt: paymentLink.expiresAt,
         createdAt: paymentLink.createdAt,
@@ -115,7 +115,7 @@ export class PaymentLinkController {
         id: paymentLink.id,
         merchantId: paymentLink.merchantId,
         status: paymentLink.status,
-        amountUsd: paymentLink.amountUsd,
+        amountUsd: paymentLink.amountUsd.toNumber(),
         description: paymentLink.description,
         expiresAt: paymentLink.expiresAt,
         createdAt: paymentLink.createdAt,
@@ -171,7 +171,7 @@ export class PaymentLinkController {
    */
   private getFeeConfig(paymentLink: {
     feeConfigOverride?: unknown | null;
-    merchant: { feeConfigs: FeeConfiguration[] };
+    merchant: { feeConfigs: FeeConfig[] };
   }): FeeConfiguration {
     if (paymentLink.feeConfigOverride) {
       return paymentLink.feeConfigOverride as FeeConfiguration;

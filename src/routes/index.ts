@@ -4,6 +4,7 @@ import { PaymentLinkController } from '../controllers/payment-link.controller';
 import { PaymentController } from '../controllers/payment.controller';
 import { WebhookController } from '../controllers/webhook.controller';
 import { HealthController } from '../controllers/health.controller';
+import { PSPOrchestrationService } from '../services/psp-orchestration.service';
 import { validateBody } from '../middleware/validate';
 import {
   createPaymentLinkSchema,
@@ -14,9 +15,12 @@ import {
 export function createRouter(prisma: PrismaClient): Router {
   const router = Router();
 
+  // Inicializar servicios
+  const pspOrchestrationService = new PSPOrchestrationService(prisma);
+
   // Inicializar controladores
   const paymentLinkController = new PaymentLinkController(prisma);
-  const paymentController = new PaymentController(prisma);
+  const paymentController = new PaymentController(prisma, pspOrchestrationService);
   const webhookController = new WebhookController(prisma);
   const healthController = new HealthController(prisma);
 
