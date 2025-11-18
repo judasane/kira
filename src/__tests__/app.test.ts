@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createApp } from '../app';
 import { PrismaClient } from '@prisma/client';
+import express from 'express';
 
 // Mock dependencies
 vi.mock('@prisma/client', () => ({
@@ -24,9 +25,8 @@ vi.mock('@prisma/client', () => ({
 
 vi.mock('../routes', () => ({
   createRouter: vi.fn(() => {
-    const express = require('express');
     const router = express.Router();
-    router.get('/test', (_req: any, res: any) => res.json({ test: true }));
+    router.get('/test', (_req: express.Request, res: express.Response) => res.json({ test: true }));
     return router;
   }),
 }));
