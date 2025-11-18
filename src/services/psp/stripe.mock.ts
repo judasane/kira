@@ -6,6 +6,27 @@ import { config } from '../../config';
 /**
  * Mock de Stripe PSP.
  * Simula la API de Stripe para crear cargos.
+ *
+ * @example
+ * ```typescript
+ * import { stripeMock } from './services/psp/stripe.mock';
+ *
+ * // Ejecutar un cargo
+ * const response = await stripeMock.charge({
+ *   amount: 10000, // $100.00 en centavos
+ *   currency: 'usd',
+ *   token: 'tok_visa',
+ *   idempotencyKey: 'unique_key_123',
+ *   metadata: { orderId: 'order_123' }
+ * });
+ *
+ * if (response.success) {
+ *   console.log('Cargo exitoso:', response.chargeId);
+ *   console.log('Transaction ID:', response.transactionId);
+ * } else {
+ *   console.error('Cargo fallido:', response.errorMessage);
+ * }
+ * ```
  */
 export class StripeMock extends BasePSPMock {
   constructor() {

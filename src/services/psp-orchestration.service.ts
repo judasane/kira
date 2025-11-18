@@ -20,6 +20,36 @@ export interface OrchestrationResult {
 /**
  * Servicio de orquestación de PSPs con failover automático.
  * Gestiona la lógica de routing primario/secundario y circuit breakers.
+ *
+ * @example
+ * ```typescript
+ * import { PSPOrchestrationService } from './services/psp-orchestration.service';
+ * import { PrismaClient, PSPProvider } from '@prisma/client';
+ *
+ * const prisma = new PrismaClient();
+ * const orchestration = new PSPOrchestrationService(prisma);
+ *
+ * // Ejecutar cargo con failover automático
+ * const result = await orchestration.executeCharge(
+ *   PSPProvider.STRIPE,
+ *   {
+ *     amount: 10000,
+ *     currency: 'usd',
+ *     token: 'tok_visa',
+ *     idempotencyKey: 'key_123',
+ *     metadata: {}
+ *   },
+ *   'transaction_id_123'
+ * );
+ *
+ * if (result.success) {
+ *   console.log('Cargo exitoso con:', result.finalProvider);
+ *   console.log('Intentos realizados:', result.attempts.length);
+ * }
+ *
+ * // Persistir intentos en BD
+ * await orchestration.persistAttempts('transaction_id_123', result.attempts);
+ * ```
  */
 export class PSPOrchestrationService {
   private prisma: PrismaClient;
@@ -34,6 +64,7 @@ export class PSPOrchestrationService {
    * @param primaryProvider - PSP primario a intentar primero
    * @param request - Request del cargo
    * @param transactionId - ID de la transacción (para logging)
+   * @returns Resultado de orquestación con todos los intentos y el provider final
    */
   async executeCharge(
     primaryProvider: PSPProvider,
@@ -109,6 +140,12 @@ export class PSPOrchestrationService {
   /**
    * Intenta ejecutar un cargo contra un PSP específico.
    * Respeta el circuit breaker del PSP.
+   *
+   * @param provider - PSP a utilizar
+   * @param request - Request del cargo
+   * @param _transactionId - ID de la transacción (para logging)
+   * @param _isPrimary - Si este es el intento primario
+   * @returns Respuesta del PSP
    */
   private async attemptCharge(
     provider: PSPProvider,
@@ -168,6 +205,9 @@ export class PSPOrchestrationService {
 
   /**
    * Determina el PSP secundario para failover
+   *
+   * @param primary - PSP primario
+   * @returns PSP secundario (alterna entre STRIPE y ADYEN)
    */
   private getSecondaryProvider(primary: PSPProvider): PSPProvider {
     return primary === PSPProvider.STRIPE ? PSPProvider.ADYEN : PSPProvider.STRIPE;
@@ -175,6 +215,9 @@ export class PSPOrchestrationService {
 
   /**
    * Persiste los intentos de PSP en la base de datos
+   *
+   * @param transactionId - ID de la transacción
+   * @param attempts - Array de intentos realizados
    */
   async persistAttempts(
     transactionId: string,

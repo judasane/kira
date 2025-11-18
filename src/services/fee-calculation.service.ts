@@ -4,6 +4,31 @@ import { fxService } from './fx.service';
 /**
  * Motor de cálculo de fees.
  * Centraliza toda la lógica de comisiones del sistema.
+ *
+ * @example
+ * ```typescript
+ * import { feeCalculationService } from './services/fee-calculation.service';
+ *
+ * // Calcular fees para una transacción
+ * const feeConfig = {
+ *   fixedFeeUsd: 0.30,
+ *   variableFeePercent: 0.029, // 2.9%
+ *   fxMarkupPercent: 0.02,     // 2%
+ *   firstTxFreeCount: 1
+ * };
+ *
+ * const result = await feeCalculationService.calculate(
+ *   100.00,      // $100 USD
+ *   feeConfig,
+ *   true,        // primera transacción
+ *   20.5         // tasa FX (opcional)
+ * );
+ *
+ * console.log('Total a cobrar (USD):', result.totalChargeUsd);
+ * console.log('Recipient recibirá (MXN):', result.recipientAmountMxn);
+ * console.log('Fees totales:', result.fees.totalFeesUsd);
+ * console.log('Desglose:', result.fees);
+ * ```
  */
 export class FeeCalculationService {
   /**
@@ -13,6 +38,7 @@ export class FeeCalculationService {
    * @param feeConfig - Configuración de fees del merchant
    * @param isFirstTransaction - Si es la primera transacción (para aplicar incentivo)
    * @param fxRate - Tasa FX actual (si no se provee, se obtiene en tiempo real)
+   * @returns Resultado completo del cálculo con desglose de fees y montos
    */
   async calculate(
     amountUsd: number,
@@ -83,6 +109,11 @@ export class FeeCalculationService {
 
   /**
    * Calcula preview de fees sin modificar estado
+   *
+   * @param amountUsd - Monto base en USD
+   * @param feeConfig - Configuración de fees del merchant
+   * @param isFirstTransaction - Si es la primera transacción (para aplicar incentivo)
+   * @returns Resultado del cálculo igual que calculate()
    */
   async preview(
     amountUsd: number,
@@ -94,6 +125,9 @@ export class FeeCalculationService {
 
   /**
    * Redondea a 2 decimales (para montos en USD/MXN)
+   *
+   * @param value - Valor a redondear
+   * @returns Valor redondeado a 2 decimales
    */
   private roundToTwoDecimals(value: number): number {
     return Math.round(value * 100) / 100;
@@ -101,6 +135,9 @@ export class FeeCalculationService {
 
   /**
    * Redondea a 4 decimales (para tasas FX)
+   *
+   * @param value - Valor a redondear
+   * @returns Valor redondeado a 4 decimales
    */
   private roundToFourDecimals(value: number): number {
     return Math.round(value * 10000) / 10000;

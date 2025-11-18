@@ -5,6 +5,23 @@ import { feeCalculationService } from '../services/fee-calculation.service';
 import { config } from '../config';
 import { getFeeConfig } from '../utils/fee-config.utils';
 
+/**
+ * Controlador para la gestión de payment links.
+ * Maneja la creación y consulta de enlaces de pago.
+ *
+ * @example
+ * ```typescript
+ * import { PaymentLinkController } from './controllers/payment-link.controller';
+ * import { PrismaClient } from '@prisma/client';
+ *
+ * const prisma = new PrismaClient();
+ * const controller = new PaymentLinkController(prisma);
+ *
+ * // Usar en un router de Express
+ * router.post('/payment-links', controller.createPaymentLink);
+ * router.get('/payment-links/:id', controller.getPaymentLink);
+ * ```
+ */
 export class PaymentLinkController {
   private prisma: PrismaClient;
 
@@ -15,6 +32,10 @@ export class PaymentLinkController {
   /**
    * POST /payment-links
    * Crear un nuevo payment link
+   *
+   * @param req - Request de Express con CreatePaymentLinkDTO en el body
+   * @param res - Response de Express
+   * @param next - NextFunction para manejo de errores
    */
   createPaymentLink = async (
     req: Request<object, object, CreatePaymentLinkDTO>,
@@ -69,6 +90,10 @@ export class PaymentLinkController {
   /**
    * GET /payment-links/:id
    * Obtener un payment link con preview de fees
+   *
+   * @param req - Request de Express con id en params y withFeePreview en query
+   * @param res - Response de Express
+   * @param next - NextFunction para manejo de errores
    */
   getPaymentLink = async (
     req: Request<{ id: string }, object, object, { withFeePreview?: string }>,

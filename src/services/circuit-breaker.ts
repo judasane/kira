@@ -5,6 +5,30 @@ import { config } from '../config';
 /**
  * Circuit Breaker simple para PSPs.
  * Previene llamadas repetidas a PSPs que están fallando.
+ *
+ * @example
+ * ```typescript
+ * import { CircuitBreaker } from './services/circuit-breaker';
+ * import { PSPProvider } from '@prisma/client';
+ *
+ * const breaker = new CircuitBreaker(PSPProvider.STRIPE);
+ *
+ * // Verificar si se puede ejecutar
+ * if (breaker.canExecute()) {
+ *   try {
+ *     // Ejecutar operación
+ *     const result = await pspClient.charge(request);
+ *     breaker.recordSuccess();
+ *   } catch (error) {
+ *     breaker.recordFailure();
+ *   }
+ * } else {
+ *   console.log('Circuit breaker está OPEN, no se puede ejecutar');
+ * }
+ *
+ * // Verificar estado
+ * console.log('Estado actual:', breaker.getState());
+ * ```
  */
 export class CircuitBreaker {
   private state: CircuitBreakerState = CircuitBreakerState.CLOSED;
@@ -21,6 +45,8 @@ export class CircuitBreaker {
 
   /**
    * Verifica si se puede ejecutar una llamada al PSP
+   *
+   * @returns true si se puede ejecutar, false si el circuit breaker está OPEN
    */
   canExecute(): boolean {
     if (this.state === CircuitBreakerState.CLOSED) {
@@ -43,6 +69,7 @@ export class CircuitBreaker {
 
   /**
    * Registra un éxito
+   * Resetea el contador de fallos y cierra el circuit breaker
    */
   recordSuccess(): void {
     this.failureCount = 0;
@@ -51,6 +78,7 @@ export class CircuitBreaker {
 
   /**
    * Registra un fallo
+   * Incrementa el contador de fallos y abre el circuit breaker si se alcanza el threshold
    */
   recordFailure(): void {
     this.failureCount++;
@@ -66,6 +94,8 @@ export class CircuitBreaker {
 
   /**
    * Obtiene el estado actual
+   *
+   * @returns Estado actual del circuit breaker (CLOSED, OPEN, o HALF_OPEN)
    */
   getState(): CircuitBreakerState {
     return this.state;
@@ -73,6 +103,7 @@ export class CircuitBreaker {
 
   /**
    * Resetea el circuit breaker
+   * Vuelve el estado a CLOSED y limpia contadores
    */
   reset(): void {
     this.state = CircuitBreakerState.CLOSED;
@@ -83,6 +114,22 @@ export class CircuitBreaker {
 
 /**
  * Gestor global de circuit breakers para cada PSP
+ *
+ * @example
+ * ```typescript
+ * import { circuitBreakerManager } from './services/circuit-breaker';
+ * import { PSPProvider } from '@prisma/client';
+ *
+ * // Obtener circuit breaker para un PSP específico
+ * const stripeBreaker = circuitBreakerManager.getBreaker(PSPProvider.STRIPE);
+ *
+ * if (stripeBreaker.canExecute()) {
+ *   // Ejecutar operación...
+ * }
+ *
+ * // Resetear todos los circuit breakers
+ * circuitBreakerManager.resetAll();
+ * ```
  */
 class CircuitBreakerManager {
   private breakers: Map<PSPProvider, CircuitBreaker> = new Map();
