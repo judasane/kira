@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { PrismaClient, PaymentLinkStatus, TransactionStatus } from '@prisma/client';
+import { PrismaClient, PaymentLinkStatus, TransactionStatus, Prisma } from '@prisma/client';
 import { ProcessPaymentDTO } from '../validators/payment-link.validator';
 import { feeCalculationService } from '../services/fee-calculation.service';
 import { PSPOrchestrationService } from '../services/psp-orchestration.service';
@@ -111,7 +111,7 @@ export class PaymentController {
           amountMxn: calculation.recipientAmountMxn,
           fxRateApplied: calculation.fxRateWithMarkup,
           feesTotalUsd: calculation.fees.totalFeesUsd,
-          metadata: metadata as Record<string, unknown>,
+          metadata: metadata as Prisma.JsonObject,
         },
       });
 
@@ -121,7 +121,7 @@ export class PaymentController {
         currency: 'usd',
         token: cardToken as string,
         idempotencyKey: idempotencyKey as string,
-        metadata: metadata as Record<string, unknown>,
+        metadata: metadata as Prisma.JsonObject,
       };
 
       const orchestrationResult = await this.orchestrationService.executeCharge(
@@ -180,11 +180,11 @@ export class PaymentController {
    * Helper: Obtiene la configuración de fees
    */
   private getFeeConfig(paymentLink: {
-    feeConfigOverride?: FeeConfiguration | null;
+    feeConfigOverride?: unknown | null;
     merchant: { feeConfigs: FeeConfiguration[] };
   }): FeeConfiguration {
     if (paymentLink.feeConfigOverride) {
-      return paymentLink.feeConfigOverride;
+      return paymentLink.feeConfigOverride as FeeConfiguration;
     }
 
     const defaultConfig = paymentLink.merchant.feeConfigs[0];

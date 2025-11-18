@@ -170,11 +170,11 @@ export class PaymentLinkController {
    * Helper: Obtiene la configuración de fees (override o default)
    */
   private getFeeConfig(paymentLink: {
-    feeConfigOverride?: FeeConfiguration | null;
+    feeConfigOverride?: unknown | null;
     merchant: { feeConfigs: FeeConfiguration[] };
   }): FeeConfiguration {
     if (paymentLink.feeConfigOverride) {
-      return paymentLink.feeConfigOverride;
+      return paymentLink.feeConfigOverride as FeeConfiguration;
     }
 
     const defaultConfig = paymentLink.merchant.feeConfigs[0];
