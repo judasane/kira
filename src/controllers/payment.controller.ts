@@ -19,7 +19,7 @@ export class PaymentController {
    * Procesar un pago sobre un payment link
    */
   processPayment = async (
-    req: Request<{ id: string }, {}, ProcessPaymentDTO>,
+    req: Request<{ id: string }, object, ProcessPaymentDTO>,
     res: Response,
     next: NextFunction
   ): Promise<void> => {
@@ -111,7 +111,7 @@ export class PaymentController {
           amountMxn: calculation.recipientAmountMxn,
           fxRateApplied: calculation.fxRateWithMarkup,
           feesTotalUsd: calculation.fees.totalFeesUsd,
-          metadata: metadata as any,
+          metadata: metadata as Record<string, unknown>,
         },
       });
 
@@ -121,7 +121,7 @@ export class PaymentController {
         currency: 'usd',
         token: cardToken as string,
         idempotencyKey: idempotencyKey as string,
-        metadata: metadata as any,
+        metadata: metadata as Record<string, unknown>,
       };
 
       const orchestrationResult = await this.orchestrationService.executeCharge(
@@ -179,9 +179,12 @@ export class PaymentController {
   /**
    * Helper: Obtiene la configuración de fees
    */
-  private getFeeConfig(paymentLink: any): FeeConfiguration {
+  private getFeeConfig(paymentLink: {
+    feeConfigOverride?: FeeConfiguration | null;
+    merchant: { feeConfigs: FeeConfiguration[] };
+  }): FeeConfiguration {
     if (paymentLink.feeConfigOverride) {
-      return paymentLink.feeConfigOverride as FeeConfiguration;
+      return paymentLink.feeConfigOverride;
     }
 
     const defaultConfig = paymentLink.merchant.feeConfigs[0];

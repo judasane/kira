@@ -14,12 +14,12 @@ export class WebhookController {
    * Recibe webhooks de PSPs mock
    */
   handlePSPWebhook = async (
-    req: Request<{}, {}, PSPWebhookDTO>,
+    req: Request<object, object, PSPWebhookDTO>,
     res: Response,
     next: NextFunction
   ): Promise<void> => {
     try {
-      const { provider, eventType, eventId: _eventId, data } = req.body;
+      const { provider, eventType, data } = req.body;
 
       console.log(`[Webhook] Received ${eventType} from ${provider}:`, data);
 
