@@ -1,9 +1,9 @@
 ==================================
 FLATTENED: kira
 Type: Submodule
-Generated at: Tue Nov 18 07:43:09 UTC 2025
+Generated at: Tue Nov 18 23:31:57 UTC 2025
 Branch: development
-Commit: c4c665cc6c106ab727293cdac214a12147f8ed9c
+Commit: d952e0431ef2e2428cb0049f552bd59f73ddd88c
 Repository: judasane/kira
 ==================================
 
@@ -660,340 +660,246 @@ CMD ["sh", "-c", "npx prisma migrate deploy && node dist/index.js"]
 --- END OF FILE: Dockerfile ---
 
 --- START OF FILE: README.md ---
-# Kira Payment Backend API
+# Kira Payment Orchestrator API
 
-Sistema de payment links con orquestación de PSPs (Stripe/Adyen mock), cálculo de fees y conversión FX USD→MXN.
+**Challenge Context (24h Sprint)**
+This project was built under a strict 24-hour timebox. Due to this constraint, a strategic decision was made to prioritize Backend robustness, financial integrity (ACID), and orchestration logic over Frontend implementation and complex Infrastructure-as-Code (Terraform). The goal was to deliver a solid transactional core capable of handling money, failures, and currency conversion securely.
 
-## 🏗️ Arquitectura
+## Project Description
 
-- **Backend**: Node.js + Express + TypeScript
-- **Database**: PostgreSQL + Prisma ORM
-- **PSPs**: Mock de Stripe y Adyen con failover automático
-- **FX**: Servicio mock con tasas en tiempo real y jitter configurable
+A Cross-Border Payment Orchestration backend (USD to MXN) that manages Payment Links, complex fee calculations, real-time FX conversion, and intelligent routing between PSPs (Stripe and Adyen) with automatic failover mechanisms.
 
-## 🚀 Quick Start
+## Architecture and Design
 
-### Prerequisitos
+The system follows a simplified Clean Architecture approach, emphasizing separation of concerns (Controllers, Domain Services, Data Access via Prisma).
 
-- Node.js 18+
-- PostgreSQL 15+ (o Docker)
-- npm o yarn
+### High-Level Data Flow
 
-### Instalación Local
+```mermaid
+graph TD
+    Client[Client / API Consumer] -->|POST /payments| API[API Gateway / Express]
+    API -->|Validate| DB[(PostgreSQL)]
+    API -->|Calculate| Fees[Fee Engine Service]
+    Fees -->|Get Rate| FX[FX Mock Service]
+    API -->|Charge| Orch[PSP Orchestrator]
+    
+    subgraph "Failover System"
+        Orch -->|Primary Attempt| CB1[Circuit Breaker: Stripe]
+        CB1 -->|Network Call| Stripe[Stripe Mock]
+        
+        Stripe -.->|Error/Timeout| Orch
+        Orch -->|Failover Attempt| CB2[Circuit Breaker: Adyen]
+        CB2 -->|Network Call| Adyen[Adyen Mock]
+    end
+    
+    Orch -->|Result| DB
+```
+
+### Database Schema (ERD)
+
+The data model is designed for strict auditability. Every attempt to charge a card is recorded, separating the abstract concept of a `Transaction` from the concrete technical `PSPAttempt`.
+
+```mermaid
+erDiagram
+    Merchant ||--o{ PaymentLink : creates
+    Merchant ||--o{ FeeConfig : has
+    PaymentLink ||--o{ Transaction : processes
+    Transaction ||--o{ PSPAttempt : generates
+
+    Merchant {
+        string id PK
+        string email
+        string name
+    }
+
+    FeeConfig {
+        string id PK
+        decimal fixedFeeUsd
+        decimal variableFeePercent
+        decimal fxMarkupPercent
+    }
+
+    PaymentLink {
+        string id PK
+        decimal amountUsd
+        string status
+        datetime expiresAt
+    }
+
+    Transaction {
+        string id PK
+        string status "PENDING|COMPLETED|FAILED"
+        decimal amountUsd
+        decimal amountMxn
+        decimal feesTotalUsd
+        string idempotencyKey
+    }
+
+    PSPAttempt {
+        string id PK
+        string pspProvider "STRIPE|ADYEN"
+        boolean isPrimary
+        string status "SUCCESS|DECLINED|ERROR"
+        int latencyMs
+    }
+```
+
+## Strategic Trade-offs and Key Decisions
+
+**1. Backend First vs. Full Stack**
+*   **Decision:** Invest 90% of the time in the fee engine, concurrency, and PSP error handling.
+*   **Rationale:** In Fintech, a UI glitch is a minor issue; a calculation error or a double charge is a financial and legal liability. The highest technical risk lies in the orchestration layer, so resources were allocated there.
+
+**2. Infrastructure (Render Blueprint vs. Terraform)**
+*   **Decision:** Used `render.yaml` (Declarative IaC) instead of raw Terraform modules.
+*   **Rationale:** For a 24h MVP, Render provides zero-config deployment, managed Postgres, and automatic SSL. This allowed focusing on business logic while still maintaining reproducible infrastructure.
+
+**3. FX and Fee Management**
+*   **Strategy:** Real-time rates with simulated Jitter (volatility).
+*   **Implementation:** The `FeeCalculationService` encapsulates all financial logic. Decimal types are used in the database and Prisma to prevent floating-point errors common in money calculations.
+
+**4. Resiliency Patterns**
+*   **Pattern:** In-memory Circuit Breaker.
+*   **Logic:** If a PSP fails repeatedly, the system stops trying it temporarily to prevent cascading latency, triggering an immediate failover to the secondary provider.
+
+## Implemented Features
+
+*   **Dynamic Fee Engine:** Supports fixed fees, variable fees (%), and FX markup. Includes logic for incentives (e.g., first N transactions free).
+*   **Dual-PSP Routing:** Primary attempt (Stripe) with automatic failover to secondary (Adyen) on technical errors (5xx/Timeout), while respecting business errors (Decline 402).
+*   **Circuit Breaker:** Protection against downtime from upstream providers.
+*   **Idempotency:** Prevents double charges using unique `idempotencyKey`.
+*   **Realistic Simulation:** PSP Mocks feature variable latency and configurable success rates via environment variables.
+*   **Full Audit Trail:** Normalized relational model recording every single interaction via `psp_attempts`.
+
+## Setup and Execution
+
+### Prerequisites
+*   Node.js 18+
+*   Docker and Docker Compose (Recommended)
+
+### Option A: Docker Compose (Fastest)
+
+Spins up both the PostgreSQL database and the API with one command.
 
 ```bash
-# 1. Clonar el repositorio
-git clone <repo-url>
-cd kira
+# 1. Start services
+docker-compose up -d --build
 
-# 2. Instalar dependencias
+# 2. View logs (to observe mock activity)
+docker-compose logs -f api
+```
+
+The API will be available at: `http://localhost:3000`
+
+### Option B: Local Development
+
+```bash
+# 1. Install dependencies
 npm install
 
-# 3. Configurar variables de entorno
+# 2. Configure environment
 cp .env.example .env
-# Editar .env con tus valores
 
-# 4. Inicializar base de datos
+# 3. Start Database (Requires local Postgres or Docker container)
+# Ensure DATABASE_URL in .env points to your DB
+
+# 4. Run migrations and seed
 npx prisma migrate dev
-npx prisma generate
-
-# 5. Seed de datos iniciales
 npm run prisma:seed
 
-# 6. Iniciar servidor de desarrollo
+# 5. Start in watch mode
 npm run dev
 ```
 
-El servidor estará disponible en `http://localhost:3000`
+## API Walkthrough (Manual Testing)
 
-### Usando Docker Compose (Recomendado)
+Since there is no Frontend UI, use this guide to test the complete End-to-End flow using `curl` or Postman.
 
-```bash
-# Iniciar todos los servicios
-docker-compose up -d
-
-# Ver logs
-docker-compose logs -f api
-
-# Detener servicios
-docker-compose down
-```
-
-## 📦 Deployment en Render
-
-### Opción 1: Blueprint (render.yaml)
-
-1. Conecta tu repositorio a Render
-2. Render detectará automáticamente el `render.yaml`
-3. Configura las variables de entorno necesarias
-4. Deploy automático
-
-### Opción 2: Manual
-
-1. **Crear PostgreSQL Database**
-   - Tipo: PostgreSQL
-   - Nombre: `kira-payment-db`
-   - Plan: Starter (o superior)
-
-2. **Crear Web Service**
-   - Tipo: Web Service
-   - Runtime: Node
-   - Build Command: `npm install && npx prisma generate && npm run build`
-   - Start Command: `npx prisma migrate deploy && npm start`
-   - Environment Variables (ver sección abajo)
-
-3. **Variables de Entorno en Render**
-
-```
-NODE_ENV=production
-PORT=10000
-DATABASE_URL=<internal-database-url>
-CORS_ORIGIN=*
-BASE_URL=https://your-app.onrender.com
-CHECKOUT_BASE_URL=https://pay.kira.com
-FX_SERVICE_BASE_RATE=18.5
-FX_SERVICE_JITTER_PERCENT=2.0
-STRIPE_MOCK_SUCCESS_RATE=0.85
-ADYEN_MOCK_SUCCESS_RATE=0.80
-PSP_MOCK_LATENCY_MS_MIN=100
-PSP_MOCK_LATENCY_MS_MAX=500
-CIRCUIT_BREAKER_FAILURE_THRESHOLD=5
-CIRCUIT_BREAKER_TIMEOUT_MS=60000
-```
-
-## 📚 API Endpoints
-
-### Health Check
-```http
-GET /health
-```
-
-### Payment Links
-
-#### Crear Payment Link
-```http
-POST /payment-links
-Content-Type: application/json
-
-{
-  "merchantId": "merchant_123",
-  "amountUsd": 100.0,
-  "description": "Pago de servicio",
-  "expiresAt": "2025-12-31T23:59:59Z"
-}
-```
-
-#### Obtener Payment Link (con preview de fees)
-```http
-GET /payment-links/{id}?withFeePreview=true
-```
-
-### Payments
-
-#### Procesar Pago
-```http
-POST /payment-links/{id}/payments
-Content-Type: application/json
-
-{
-  "cardToken": "tok_mock_stripe_1234",
-  "pspProvider": "STRIPE",
-  "idempotencyKey": "unique-key-123",
-  "metadata": {
-    "customerEmail": "user@example.com"
-  }
-}
-```
-
-### Webhooks
-
-#### Webhook de PSP
-```http
-POST /webhooks/psp
-Content-Type: application/json
-
-{
-  "provider": "STRIPE",
-  "eventType": "payment.succeeded",
-  "eventId": "evt_123",
-  "data": {
-    "transactionId": "tx_abc",
-    "pspChargeId": "ch_xyz",
-    "status": "succeeded"
-  }
-}
-```
-
-## 🧪 Testing
-
-### Con cURL
+### 1. Health Check
+Verify the system and database are online.
 
 ```bash
-# Health check
 curl http://localhost:3000/health
+```
 
-# Crear payment link
+### 2. Create a Payment Link
+Simulates the merchant creating a charge request.
+
+```bash
 curl -X POST http://localhost:3000/payment-links \
   -H "Content-Type: application/json" \
   -d '{
-    "merchantId": "merchant_123",
-    "amountUsd": 100.0,
-    "description": "Test payment"
+    "merchantId": "merchant_default", 
+    "amountUsd": 100.00, 
+    "description": "Technical Consulting",
+    "feeConfigOverride": {
+        "fixedFeeUsd": 0.50,
+        "variableFeePercent": 0.03,
+        "fxMarkupPercent": 0.015,
+        "firstTxFreeCount": 0
+    }
   }'
+```
+*Note: Copy the `id` from the response for the next steps.*
 
-# Obtener payment link con preview
-curl http://localhost:3000/payment-links/{id}?withFeePreview=true
+### 3. Get Fee Preview (Simulating Checkout Load)
+The frontend would call this to display how much the user pays and how much the merchant receives in MXN.
 
-# Procesar pago
-curl -X POST http://localhost:3000/payment-links/{id}/payments \
+```bash
+# Replace LINK_ID with the ID obtained in the previous step
+curl "http://localhost:3000/payment-links/LINK_ID?withFeePreview=true"
+```
+*Note: The `feePreview` field shows the breakdown and the current `fxRate` (which varies slightly on each call due to simulated Jitter).*
+
+### 4. Process Payment (Happy Path)
+Simulates the user submitting their card token.
+
+```bash
+curl -X POST "http://localhost:3000/payment-links/LINK_ID/payments" \
   -H "Content-Type: application/json" \
   -d '{
-    "cardToken": "tok_mock_stripe_test",
+    "cardToken": "tok_mock_stripe_visa_001",
     "pspProvider": "STRIPE",
-    "idempotencyKey": "test-key-001"
+    "idempotencyKey": "unique_key_12345",
+    "metadata": { "email": "client@example.com" }
   }'
 ```
 
-### Con Postman
+### 5. Simulate Failure and Failover (Chaos Testing)
+To test resiliency, you can configure the environment variables in `docker-compose.yml` or `.env`:
 
-Importa la colección desde el Swagger (OpenAPI spec) incluido en la documentación.
+*   `STRIPE_MOCK_SUCCESS_RATE=0.0` (Force Stripe failure)
+*   `ADYEN_MOCK_SUCCESS_RATE=1.0` (Ensure Adyen success)
 
-## 🗄️ Base de Datos
+When retrying the payment (with a new `idempotencyKey`), you will see in the response:
+*   `pspProvider: "ADYEN"` (Indicates successful failover).
+*   In the console logs: `[Orchestration] Primary STRIPE failed... attempting failover to ADYEN`.
 
-### Migraciones
+## Roadmap and Future Improvements
 
-```bash
-# Crear migración
-npx prisma migrate dev --name descripcion_cambio
+If this project were to continue towards production, these would be the immediate priorities:
 
-# Aplicar migraciones en producción
-npx prisma migrate deploy
+1.  **Frontend SPA:** Implement the checkout UI in Angular/React consuming the existing endpoints.
+2.  **Integration Tests (E2E):** Implement a test suite using `Supertest` to automatically validate failover scenarios and concurrency.
+3.  **Security:** Implement HMAC signature validation for Webhooks and JWT authentication for merchant endpoints.
+4.  **Cloud Infrastructure:** Migrate from Render to Terraform (AWS) with ECS for the API and RDS Multi-AZ for the database.
 
-# Reset de base de datos (desarrollo)
-npm run db:reset
-```
-
-### Prisma Studio
-
-```bash
-# Abrir GUI de base de datos
-npm run prisma:studio
-```
-
-## 🔧 Configuración
-
-### Variables de Entorno
-
-| Variable | Descripción | Default |
-|----------|-------------|---------|
-| `NODE_ENV` | Entorno de ejecución | `development` |
-| `PORT` | Puerto del servidor | `3000` |
-| `DATABASE_URL` | Connection string de PostgreSQL | - |
-| `CORS_ORIGIN` | Origen permitido para CORS | `http://localhost:4200` |
-| `FX_SERVICE_BASE_RATE` | Tasa base USD→MXN | `18.5` |
-| `FX_SERVICE_JITTER_PERCENT` | Variación % de la tasa | `2.0` |
-| `STRIPE_MOCK_SUCCESS_RATE` | % éxito de Stripe | `0.85` |
-| `ADYEN_MOCK_SUCCESS_RATE` | % éxito de Adyen | `0.80` |
-| `PSP_MOCK_LATENCY_MS_MIN` | Latencia mínima PSP | `100` |
-| `PSP_MOCK_LATENCY_MS_MAX` | Latencia máxima PSP | `500` |
-| `CIRCUIT_BREAKER_FAILURE_THRESHOLD` | Fallos antes de abrir circuito | `5` |
-| `CIRCUIT_BREAKER_TIMEOUT_MS` | Timeout del circuit breaker | `60000` |
-
-## 📊 Estructura del Proyecto
+## Project Structure
 
 ```
-kira/
-├── prisma/
-│   ├── schema.prisma          # Schema de base de datos
-│   └── seed.ts                # Datos iniciales
-├── src/
-│   ├── config/                # Configuración
-│   ├── controllers/           # Controladores de rutas
-│   ├── middleware/            # Middleware de Express
-│   ├── routes/                # Definición de rutas
-│   ├── services/              # Lógica de negocio
-│   │   ├── psp/              # Mocks de PSPs
-│   │   ├── circuit-breaker.ts
-│   │   ├── fee-calculation.service.ts
-│   │   ├── fx.service.ts
-│   │   └── psp-orchestration.service.ts
-│   ├── types/                 # Tipos TypeScript
-│   ├── validators/            # Validadores Zod
-│   ├── app.ts                 # Configuración Express
-│   └── index.ts               # Entry point
-├── .env.example
-├── docker-compose.yml
-├── Dockerfile
-├── package.json
-├── tsconfig.json
-└── render.yaml
+src/
+├── config/             # Configuration and Env vars
+├── controllers/        # HTTP Request handling
+├── services/           # Domain Business Logic
+│   ├── psp/            # Stripe and Adyen Mocks
+│   ├── fee-calculation # Fee Engine
+│   ├── fx.service.ts   # FX Rate Mock
+│   └── psp-orchestration # Failover/Routing Logic
+├── validators/         # Zod Schemas
+├── middleware/         # Error handling and Validation
+└── index.ts            # Entry point
 ```
-
-## 🎯 Características Clave
-
-### 1. Orquestación de PSPs con Failover
-- Intento primario contra PSP seleccionado
-- Failover automático al PSP secundario en caso de error técnico
-- Circuit breaker para prevenir llamadas repetidas a PSPs fallando
-
-### 2. Motor de Fees
-- Fee fija en USD
-- Fee variable (% del monto)
-- Markup de FX
-- Incentivos de primera transacción
-
-### 3. FX en Tiempo Real
-- Tasa de cambio con jitter configurable
-- Simula volatilidad del mercado
-- Preview vs ejecución puede variar ligeramente
-
-### 4. Idempotencia
-- Clave de idempotencia en pagos
-- Previene dobles cobros
-
-### 5. Auditabilidad Completa
-- Todos los intentos de PSP se registran
-- Historial completo de transacciones
-- Métricas de latencia
-
-## 🔒 Seguridad
-
-### PCI Compliance
-- **Tokenización**: El frontend simula tokenización; el backend NUNCA recibe datos de tarjeta
-- **Tokens mock**: Formato `tok_mock_{psp}_{uuid}`
-- **Nivel SAQ A**: No se procesa ni almacena PAN, CVV u otros datos sensibles
-
-### CORS
-- Configurable por variable de entorno
-- Por defecto restrictivo en producción
-
-### Validación
-- Todos los inputs validados con Zod
-- Sanitización automática
-
-## 📝 Notas de Implementación
-
-### Limitaciones Conocidas
-1. **Caché en memoria**: Fee configs se cachean en RAM (no Redis)
-2. **Circuit breaker simple**: No persiste estado entre reinicios
-3. **Webhooks sin firma**: No se valida HMAC (solo para mock)
-4. **Idempotencia limitada**: Solo en endpoint de pago
-
-### Próximos Pasos
-- [ ] Implementar frontend Angular
-- [ ] Agregar autenticación de merchants
-- [ ] Panel de administración
-- [ ] Métricas y monitoring (Prometheus)
-- [ ] Tests automatizados
-- [ ] CI/CD pipeline
-
-## 📄 Licencia
-
-MIT
-
-## 👥 Autor
-
-Kira Team
+Use Arrow Up and Arrow Down to select a turn, Enter to jump to it, and Escape to return to the chat.
 
 --- END OF FILE: README.md ---
 
@@ -2003,6 +1909,22 @@ export default config;
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 
+/**
+ * Controlador para healthcheck del servicio.
+ * Verifica el estado del servicio y la conexión a la base de datos.
+ *
+ * @example
+ * ```typescript
+ * import { HealthController } from './controllers/health.controller';
+ * import { PrismaClient } from '@prisma/client';
+ *
+ * const prisma = new PrismaClient();
+ * const controller = new HealthController(prisma);
+ *
+ * // Usar en un router de Express
+ * router.get('/health', controller.check);
+ * ```
+ */
 export class HealthController {
   private prisma: PrismaClient;
 
@@ -2013,6 +1935,9 @@ export class HealthController {
   /**
    * GET /health
    * Healthcheck del servicio
+   *
+   * @param _req - Request de Express (no utilizado)
+   * @param res - Response de Express
    */
   check = async (_req: Request, res: Response): Promise<void> => {
     try {
@@ -2045,6 +1970,23 @@ import { feeCalculationService } from '../services/fee-calculation.service';
 import { config } from '../config';
 import { getFeeConfig } from '../utils/fee-config.utils';
 
+/**
+ * Controlador para la gestión de payment links.
+ * Maneja la creación y consulta de enlaces de pago.
+ *
+ * @example
+ * ```typescript
+ * import { PaymentLinkController } from './controllers/payment-link.controller';
+ * import { PrismaClient } from '@prisma/client';
+ *
+ * const prisma = new PrismaClient();
+ * const controller = new PaymentLinkController(prisma);
+ *
+ * // Usar en un router de Express
+ * router.post('/payment-links', controller.createPaymentLink);
+ * router.get('/payment-links/:id', controller.getPaymentLink);
+ * ```
+ */
 export class PaymentLinkController {
   private prisma: PrismaClient;
 
@@ -2055,6 +1997,10 @@ export class PaymentLinkController {
   /**
    * POST /payment-links
    * Crear un nuevo payment link
+   *
+   * @param req - Request de Express con CreatePaymentLinkDTO en el body
+   * @param res - Response de Express
+   * @param next - NextFunction para manejo de errores
    */
   createPaymentLink = async (
     req: Request<object, object, CreatePaymentLinkDTO>,
@@ -2109,6 +2055,10 @@ export class PaymentLinkController {
   /**
    * GET /payment-links/:id
    * Obtener un payment link con preview de fees
+   *
+   * @param req - Request de Express con id en params y withFeePreview en query
+   * @param res - Response de Express
+   * @param next - NextFunction para manejo de errores
    */
   getPaymentLink = async (
     req: Request<{ id: string }, object, object, { withFeePreview?: string }>,
@@ -2218,6 +2168,22 @@ import { PSPOrchestrationService } from '../services/psp-orchestration.service';
 import { PSPChargeRequest } from '../types';
 import { getFeeConfig } from '../utils/fee-config.utils';
 
+/**
+ * Controlador para el procesamiento de pagos.
+ * Maneja la ejecución de transacciones sobre payment links con orquestación de PSPs.
+ *
+ * @example
+ * ```typescript
+ * import { PaymentController } from './controllers/payment.controller';
+ * import { PrismaClient } from '@prisma/client';
+ *
+ * const prisma = new PrismaClient();
+ * const controller = new PaymentController(prisma);
+ *
+ * // Usar en un router de Express
+ * router.post('/payment-links/:id/payments', controller.processPayment);
+ * ```
+ */
 export class PaymentController {
   private prisma: PrismaClient;
   private orchestrationService: PSPOrchestrationService;
@@ -2230,6 +2196,10 @@ export class PaymentController {
   /**
    * POST /payment-links/:id/payments
    * Procesar un pago sobre un payment link
+   *
+   * @param req - Request de Express con id en params y ProcessPaymentDTO en body
+   * @param res - Response de Express
+   * @param next - NextFunction para manejo de errores
    */
   processPayment = async (
     req: Request<{ id: string }, object, ProcessPaymentDTO>,
@@ -2397,6 +2367,22 @@ import { Request, Response, NextFunction } from 'express';
 import { PrismaClient, TransactionStatus } from '@prisma/client';
 import { PSPWebhookDTO } from '../validators/payment-link.validator';
 
+/**
+ * Controlador para recibir y procesar webhooks de PSPs.
+ * Maneja notificaciones asíncronas de estado de transacciones.
+ *
+ * @example
+ * ```typescript
+ * import { WebhookController } from './controllers/webhook.controller';
+ * import { PrismaClient } from '@prisma/client';
+ *
+ * const prisma = new PrismaClient();
+ * const controller = new WebhookController(prisma);
+ *
+ * // Usar en un router de Express
+ * router.post('/webhooks/psp', controller.handlePSPWebhook);
+ * ```
+ */
 export class WebhookController {
   private prisma: PrismaClient;
 
@@ -2407,6 +2393,10 @@ export class WebhookController {
   /**
    * POST /webhooks/psp
    * Recibe webhooks de PSPs mock
+   *
+   * @param req - Request de Express con PSPWebhookDTO en body
+   * @param res - Response de Express
+   * @param next - NextFunction para manejo de errores
    */
   handlePSPWebhook = async (
     req: Request<object, object, PSPWebhookDTO>,
@@ -2750,6 +2740,30 @@ import { config } from '../config';
 /**
  * Circuit Breaker simple para PSPs.
  * Previene llamadas repetidas a PSPs que están fallando.
+ *
+ * @example
+ * ```typescript
+ * import { CircuitBreaker } from './services/circuit-breaker';
+ * import { PSPProvider } from '@prisma/client';
+ *
+ * const breaker = new CircuitBreaker(PSPProvider.STRIPE);
+ *
+ * // Verificar si se puede ejecutar
+ * if (breaker.canExecute()) {
+ *   try {
+ *     // Ejecutar operación
+ *     const result = await pspClient.charge(request);
+ *     breaker.recordSuccess();
+ *   } catch (error) {
+ *     breaker.recordFailure();
+ *   }
+ * } else {
+ *   console.log('Circuit breaker está OPEN, no se puede ejecutar');
+ * }
+ *
+ * // Verificar estado
+ * console.log('Estado actual:', breaker.getState());
+ * ```
  */
 export class CircuitBreaker {
   private state: CircuitBreakerState = CircuitBreakerState.CLOSED;
@@ -2766,6 +2780,8 @@ export class CircuitBreaker {
 
   /**
    * Verifica si se puede ejecutar una llamada al PSP
+   *
+   * @returns true si se puede ejecutar, false si el circuit breaker está OPEN
    */
   canExecute(): boolean {
     if (this.state === CircuitBreakerState.CLOSED) {
@@ -2788,6 +2804,7 @@ export class CircuitBreaker {
 
   /**
    * Registra un éxito
+   * Resetea el contador de fallos y cierra el circuit breaker
    */
   recordSuccess(): void {
     this.failureCount = 0;
@@ -2796,6 +2813,7 @@ export class CircuitBreaker {
 
   /**
    * Registra un fallo
+   * Incrementa el contador de fallos y abre el circuit breaker si se alcanza el threshold
    */
   recordFailure(): void {
     this.failureCount++;
@@ -2811,6 +2829,8 @@ export class CircuitBreaker {
 
   /**
    * Obtiene el estado actual
+   *
+   * @returns Estado actual del circuit breaker (CLOSED, OPEN, o HALF_OPEN)
    */
   getState(): CircuitBreakerState {
     return this.state;
@@ -2818,6 +2838,7 @@ export class CircuitBreaker {
 
   /**
    * Resetea el circuit breaker
+   * Vuelve el estado a CLOSED y limpia contadores
    */
   reset(): void {
     this.state = CircuitBreakerState.CLOSED;
@@ -2828,6 +2849,22 @@ export class CircuitBreaker {
 
 /**
  * Gestor global de circuit breakers para cada PSP
+ *
+ * @example
+ * ```typescript
+ * import { circuitBreakerManager } from './services/circuit-breaker';
+ * import { PSPProvider } from '@prisma/client';
+ *
+ * // Obtener circuit breaker para un PSP específico
+ * const stripeBreaker = circuitBreakerManager.getBreaker(PSPProvider.STRIPE);
+ *
+ * if (stripeBreaker.canExecute()) {
+ *   // Ejecutar operación...
+ * }
+ *
+ * // Resetear todos los circuit breakers
+ * circuitBreakerManager.resetAll();
+ * ```
  */
 class CircuitBreakerManager {
   private breakers: Map<PSPProvider, CircuitBreaker> = new Map();
@@ -2968,6 +3005,31 @@ import { fxService } from './fx.service';
 /**
  * Motor de cálculo de fees.
  * Centraliza toda la lógica de comisiones del sistema.
+ *
+ * @example
+ * ```typescript
+ * import { feeCalculationService } from './services/fee-calculation.service';
+ *
+ * // Calcular fees para una transacción
+ * const feeConfig = {
+ *   fixedFeeUsd: 0.30,
+ *   variableFeePercent: 0.029, // 2.9%
+ *   fxMarkupPercent: 0.02,     // 2%
+ *   firstTxFreeCount: 1
+ * };
+ *
+ * const result = await feeCalculationService.calculate(
+ *   100.00,      // $100 USD
+ *   feeConfig,
+ *   true,        // primera transacción
+ *   20.5         // tasa FX (opcional)
+ * );
+ *
+ * console.log('Total a cobrar (USD):', result.totalChargeUsd);
+ * console.log('Recipient recibirá (MXN):', result.recipientAmountMxn);
+ * console.log('Fees totales:', result.fees.totalFeesUsd);
+ * console.log('Desglose:', result.fees);
+ * ```
  */
 export class FeeCalculationService {
   /**
@@ -2977,6 +3039,7 @@ export class FeeCalculationService {
    * @param feeConfig - Configuración de fees del merchant
    * @param isFirstTransaction - Si es la primera transacción (para aplicar incentivo)
    * @param fxRate - Tasa FX actual (si no se provee, se obtiene en tiempo real)
+   * @returns Resultado completo del cálculo con desglose de fees y montos
    */
   async calculate(
     amountUsd: number,
@@ -3047,6 +3110,11 @@ export class FeeCalculationService {
 
   /**
    * Calcula preview de fees sin modificar estado
+   *
+   * @param amountUsd - Monto base en USD
+   * @param feeConfig - Configuración de fees del merchant
+   * @param isFirstTransaction - Si es la primera transacción (para aplicar incentivo)
+   * @returns Resultado del cálculo igual que calculate()
    */
   async preview(
     amountUsd: number,
@@ -3058,6 +3126,9 @@ export class FeeCalculationService {
 
   /**
    * Redondea a 2 decimales (para montos en USD/MXN)
+   *
+   * @param value - Valor a redondear
+   * @returns Valor redondeado a 2 decimales
    */
   private roundToTwoDecimals(value: number): number {
     return Math.round(value * 100) / 100;
@@ -3065,6 +3136,9 @@ export class FeeCalculationService {
 
   /**
    * Redondea a 4 decimales (para tasas FX)
+   *
+   * @param value - Valor a redondear
+   * @returns Valor redondeado a 4 decimales
    */
   private roundToFourDecimals(value: number): number {
     return Math.round(value * 10000) / 10000;
@@ -3083,6 +3157,22 @@ import { config } from '../config';
 /**
  * Servicio mock de FX que simula obtener tasas de cambio en tiempo real.
  * Aplica un jitter configurable para simular volatilidad del mercado.
+ *
+ * @example
+ * ```typescript
+ * import { fxService } from './services/fx.service';
+ *
+ * // Obtener tasa de cambio actual
+ * const rate = await fxService.getRate('USD', 'MXN');
+ * console.log('Tasa USD->MXN:', rate.rate);
+ * console.log('Timestamp:', rate.timestamp);
+ *
+ * // Aplicar markup a una tasa
+ * const baseRate = 20.5;
+ * const markupPercent = 0.02; // 2%
+ * const rateWithMarkup = fxService.applyMarkup(baseRate, markupPercent);
+ * console.log('Tasa con markup:', rateWithMarkup); // 20.91
+ * ```
  */
 export class FXService {
   private baseRate: number;
@@ -3096,6 +3186,10 @@ export class FXService {
   /**
    * Obtiene la tasa de cambio actual USD -> MXN con jitter aplicado.
    * Cada llamada puede retornar un valor ligeramente diferente.
+   *
+   * @param fromCurrency - Moneda origen (por defecto 'USD')
+   * @param toCurrency - Moneda destino (por defecto 'MXN')
+   * @returns Objeto FXRate con la tasa, monedas y timestamp
    */
   async getRate(fromCurrency: string = 'USD', toCurrency: string = 'MXN'): Promise<FXRate> {
     // Simular latencia de red
@@ -3118,6 +3212,8 @@ export class FXService {
 
   /**
    * Simula latencia de red (50-150ms)
+   *
+   * @returns Promise que se resuelve después de la latencia simulada
    */
   private async simulateLatency(): Promise<void> {
     const latency = 50 + Math.random() * 100;
@@ -3126,6 +3222,10 @@ export class FXService {
 
   /**
    * Aplica markup al rate base (para cálculo de fees)
+   *
+   * @param rate - Tasa base a la que se aplicará el markup
+   * @param markupPercent - Porcentaje de markup a aplicar (ej: 0.02 para 2%)
+   * @returns Tasa con markup aplicado, redondeada a 4 decimales
    */
   applyMarkup(rate: number, markupPercent: number): number {
     return Math.round(rate * (1 + markupPercent) * 10000) / 10000;
@@ -3160,6 +3260,36 @@ export interface OrchestrationResult {
 /**
  * Servicio de orquestación de PSPs con failover automático.
  * Gestiona la lógica de routing primario/secundario y circuit breakers.
+ *
+ * @example
+ * ```typescript
+ * import { PSPOrchestrationService } from './services/psp-orchestration.service';
+ * import { PrismaClient, PSPProvider } from '@prisma/client';
+ *
+ * const prisma = new PrismaClient();
+ * const orchestration = new PSPOrchestrationService(prisma);
+ *
+ * // Ejecutar cargo con failover automático
+ * const result = await orchestration.executeCharge(
+ *   PSPProvider.STRIPE,
+ *   {
+ *     amount: 10000,
+ *     currency: 'usd',
+ *     token: 'tok_visa',
+ *     idempotencyKey: 'key_123',
+ *     metadata: {}
+ *   },
+ *   'transaction_id_123'
+ * );
+ *
+ * if (result.success) {
+ *   console.log('Cargo exitoso con:', result.finalProvider);
+ *   console.log('Intentos realizados:', result.attempts.length);
+ * }
+ *
+ * // Persistir intentos en BD
+ * await orchestration.persistAttempts('transaction_id_123', result.attempts);
+ * ```
  */
 export class PSPOrchestrationService {
   private prisma: PrismaClient;
@@ -3174,6 +3304,7 @@ export class PSPOrchestrationService {
    * @param primaryProvider - PSP primario a intentar primero
    * @param request - Request del cargo
    * @param transactionId - ID de la transacción (para logging)
+   * @returns Resultado de orquestación con todos los intentos y el provider final
    */
   async executeCharge(
     primaryProvider: PSPProvider,
@@ -3249,6 +3380,12 @@ export class PSPOrchestrationService {
   /**
    * Intenta ejecutar un cargo contra un PSP específico.
    * Respeta el circuit breaker del PSP.
+   *
+   * @param provider - PSP a utilizar
+   * @param request - Request del cargo
+   * @param _transactionId - ID de la transacción (para logging)
+   * @param _isPrimary - Si este es el intento primario
+   * @returns Respuesta del PSP
    */
   private async attemptCharge(
     provider: PSPProvider,
@@ -3308,6 +3445,9 @@ export class PSPOrchestrationService {
 
   /**
    * Determina el PSP secundario para failover
+   *
+   * @param primary - PSP primario
+   * @returns PSP secundario (alterna entre STRIPE y ADYEN)
    */
   private getSecondaryProvider(primary: PSPProvider): PSPProvider {
     return primary === PSPProvider.STRIPE ? PSPProvider.ADYEN : PSPProvider.STRIPE;
@@ -3315,6 +3455,9 @@ export class PSPOrchestrationService {
 
   /**
    * Persiste los intentos de PSP en la base de datos
+   *
+   * @param transactionId - ID de la transacción
+   * @param attempts - Array de intentos realizados
    */
   async persistAttempts(
     transactionId: string,
@@ -3353,6 +3496,27 @@ import { config } from '../../config';
 /**
  * Mock de Adyen PSP.
  * Simula la API de Adyen para crear pagos.
+ *
+ * @example
+ * ```typescript
+ * import { adyenMock } from './services/psp/adyen.mock';
+ *
+ * // Ejecutar un pago
+ * const response = await adyenMock.charge({
+ *   amount: 10000, // $100.00 en centavos
+ *   currency: 'usd',
+ *   token: 'tok_visa',
+ *   idempotencyKey: 'unique_key_123',
+ *   metadata: { orderId: 'order_123' }
+ * });
+ *
+ * if (response.success) {
+ *   console.log('Pago autorizado:', response.chargeId);
+ *   console.log('PSP Reference:', response.transactionId);
+ * } else {
+ *   console.error('Pago rechazado:', response.errorMessage);
+ * }
+ * ```
  */
 export class AdyenMock extends BasePSPMock {
   constructor() {
@@ -3450,6 +3614,38 @@ import { config } from '../../config';
 /**
  * Clase base abstracta para PSP mocks.
  * Implementa comportamiento común de simulación de latencia y resultados aleatorios.
+ *
+ * @example
+ * ```typescript
+ * class MyPSPMock extends BasePSPMock {
+ *   constructor() {
+ *     super(PSPProvider.STRIPE, 0.95);
+ *   }
+ *
+ *   async charge(request: PSPChargeRequest): Promise<PSPChargeResponse> {
+ *     const latencyMs = await this.simulateLatency();
+ *     const willSucceed = this.shouldSucceed();
+ *
+ *     if (willSucceed) {
+ *       return {
+ *         success: true,
+ *         chargeId: this.generateChargeId(),
+ *         transactionId: this.generateTransactionId(),
+ *         status: PSPAttemptStatus.SUCCESS,
+ *         statusCode: 200,
+ *         latencyMs,
+ *         rawResponse: {}
+ *       };
+ *     }
+ *
+ *     const failure = this.simulateFailure();
+ *     return { success: false, ...failure, latencyMs, rawResponse: {} };
+ *   }
+ * }
+ *
+ * const psp = new MyPSPMock();
+ * const result = await psp.charge({ amount: 1000, currency: 'usd', token: 'tok_123', idempotencyKey: 'key_123', metadata: {} });
+ * ```
  */
 export abstract class BasePSPMock implements PSPClient {
   protected successRate: number;
@@ -3468,6 +3664,8 @@ export abstract class BasePSPMock implements PSPClient {
 
   /**
    * Simula latencia de red del PSP
+   *
+   * @returns Latencia simulada en milisegundos
    */
   protected async simulateLatency(): Promise<number> {
     const { min, max } = config.psp.latency;
@@ -3478,6 +3676,8 @@ export abstract class BasePSPMock implements PSPClient {
 
   /**
    * Determina si el cargo será exitoso basado en la tasa de éxito configurada
+   *
+   * @returns true si el cargo debe ser exitoso, false en caso contrario
    */
   protected shouldSucceed(): boolean {
     return Math.random() < this.successRate;
@@ -3485,6 +3685,8 @@ export abstract class BasePSPMock implements PSPClient {
 
   /**
    * Simula diferentes tipos de fallos
+   *
+   * @returns Objeto con detalles del fallo (status, statusCode, errorMessage)
    */
   protected simulateFailure(): { status: PSPAttemptStatus; statusCode: number; errorMessage: string } {
     const failureTypes = [
@@ -3515,6 +3717,8 @@ export abstract class BasePSPMock implements PSPClient {
 
   /**
    * Genera un ID único para el cargo
+   *
+   * @returns ID único del cargo con formato ch_{provider}_{timestamp}_{random}
    */
   protected generateChargeId(): string {
     const timestamp = Date.now();
@@ -3524,6 +3728,8 @@ export abstract class BasePSPMock implements PSPClient {
 
   /**
    * Genera un ID único para la transacción
+   *
+   * @returns ID único de la transacción con formato tx_{provider}_{timestamp}_{random}
    */
   protected generateTransactionId(): string {
     const timestamp = Date.now();
@@ -3567,6 +3773,27 @@ import { config } from '../../config';
 /**
  * Mock de Stripe PSP.
  * Simula la API de Stripe para crear cargos.
+ *
+ * @example
+ * ```typescript
+ * import { stripeMock } from './services/psp/stripe.mock';
+ *
+ * // Ejecutar un cargo
+ * const response = await stripeMock.charge({
+ *   amount: 10000, // $100.00 en centavos
+ *   currency: 'usd',
+ *   token: 'tok_visa',
+ *   idempotencyKey: 'unique_key_123',
+ *   metadata: { orderId: 'order_123' }
+ * });
+ *
+ * if (response.success) {
+ *   console.log('Cargo exitoso:', response.chargeId);
+ *   console.log('Transaction ID:', response.transactionId);
+ * } else {
+ *   console.error('Cargo fallido:', response.errorMessage);
+ * }
+ * ```
  */
 export class StripeMock extends BasePSPMock {
   constructor() {
