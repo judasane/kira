@@ -17,7 +17,7 @@ export class PaymentLinkController {
    * Crear un nuevo payment link
    */
   createPaymentLink = async (
-    req: Request<{}, {}, CreatePaymentLinkDTO>,
+    req: Request<object, object, CreatePaymentLinkDTO>,
     res: Response,
     next: NextFunction
   ): Promise<void> => {
@@ -71,7 +71,7 @@ export class PaymentLinkController {
    * Obtener un payment link con preview de fees
    */
   getPaymentLink = async (
-    req: Request<{ id: string }, {}, {}, { withFeePreview?: string }>,
+    req: Request<{ id: string }, object, object, { withFeePreview?: string }>,
     res: Response,
     next: NextFunction
   ): Promise<void> => {
@@ -111,7 +111,7 @@ export class PaymentLinkController {
 
       // Construir response base
       const checkoutUrl = `${config.checkoutBaseUrl}/checkout/${paymentLink.id}`;
-      const response: any = {
+      const response: Record<string, unknown> = {
         id: paymentLink.id,
         merchantId: paymentLink.merchantId,
         status: paymentLink.status,
@@ -169,7 +169,10 @@ export class PaymentLinkController {
   /**
    * Helper: Obtiene la configuración de fees (override o default)
    */
-  private getFeeConfig(paymentLink: any): FeeConfiguration {
+  private getFeeConfig(paymentLink: {
+    feeConfigOverride?: unknown | null;
+    merchant: { feeConfigs: FeeConfiguration[] };
+  }): FeeConfiguration {
     if (paymentLink.feeConfigOverride) {
       return paymentLink.feeConfigOverride as FeeConfiguration;
     }
