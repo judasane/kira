@@ -1,22 +1,21 @@
-# Kira Payment Orchestrator API 🦉
+# Kira Payment Orchestrator API
 
-> **⚠️ Contexto del Desafío (24h Sprint):**
-> Este proyecto fue desarrollado bajo un timebox estricto de **24 horas**.
-> Debido a esta restricción, se tomó la decisión estratégica de **priorizar la robustez del Backend, la integridad financiera (ACID) y la lógica de orquestación** sobre la implementación del Frontend y la infraestructura compleja (Terraform).
->
-> El objetivo fue entregar un núcleo transaccional sólido capaz de manejar dinero, fallos y conversiones de divisa de forma segura.
+**Challenge Context (24h Sprint)**
+This project was built under a strict 24-hour timebox. Due to this constraint, a strategic decision was made to prioritize Backend robustness, financial integrity (ACID), and orchestration logic over Frontend implementation and complex Infrastructure-as-Code (Terraform). The goal was to deliver a solid transactional core capable of handling money, failures, and currency conversion securely.
 
-Backend de orquestación de pagos Cross-Border (USD → MXN) que gestiona Payment Links, cálculo de fees complejos, conversión de divisas en tiempo real y enrutamiento inteligente entre PSPs (Stripe y Adyen) con failover automático.
+## Project Description
 
-## 🏗️ Arquitectura y Diseño
+A Cross-Border Payment Orchestration backend (USD to MXN) that manages Payment Links, complex fee calculations, real-time FX conversion, and intelligent routing between PSPs (Stripe and Adyen) with automatic failover mechanisms.
 
-El sistema sigue una **Clean Architecture** simplificada, utilizando inyección de dependencias y separación de responsabilidades (Controladores, Servicios de Dominio, Repositorios vía Prisma).
+## Architecture and Design
 
-### Diagrama de Flujo de Datos
+The system follows a simplified Clean Architecture approach, emphasizing separation of concerns (Controllers, Domain Services, Data Access via Prisma).
+
+### High-Level Data Flow
 
 ```mermaid
 graph TD
-    Client[Cliente / API Consumer] -->|POST /payments| API[API Gateway / Express]
+    Client[Client / API Consumer] -->|POST /payments| API[API Gateway / Express]
     API -->|Validate| DB[(PostgreSQL)]
     API -->|Calculate| Fees[Fee Engine Service]
     Fees -->|Get Rate| FX[FX Mock Service]
@@ -34,91 +33,143 @@ graph TD
     Orch -->|Result| DB
 ```
 
-### Decisiones Técnicas Clave (Strategic Trade-offs)
+### Database Schema (ERD)
 
-1.  **Backend First vs. Full Stack:**
-    *   **Decisión:** Invertir el 90% del tiempo en el motor de fees, concurrencia y manejo de errores de PSPs.
-    *   **Razón:** En Fintech, un error de UI es una molestia; un error de cálculo o un doble cobro es una pérdida financiera y legal. El riesgo técnico más alto reside en la orquestación.
+The data model is designed for strict auditability. Every attempt to charge a card is recorded, separating the abstract concept of a `Transaction` from the concrete technical `PSPAttempt`.
 
-2.  **Infraestructura (Render Blueprint vs. Terraform):**
-    *   **Decisión:** Uso de `render.yaml` (Infrastructure as Code declarativa) en lugar de módulos de Terraform.
-    *   **Razón:** Para un MVP de 24h, Render ofrece despliegue de cero configuración, base de datos gestionada y SSL automático. Esto permitió centrarse en la lógica de negocio sin sacrificar la reproducibilidad del entorno.
+```mermaid
+erDiagram
+    Merchant ||--o{ PaymentLink : creates
+    Merchant ||--o{ FeeConfig : has
+    PaymentLink ||--o{ Transaction : processes
+    Transaction ||--o{ PSPAttempt : generates
 
-3.  **Manejo de FX y Fees:**
-    *   **Estrategia:** Tasas en tiempo real con Jitter (volatilidad simulada).
-    *   **Implementación:** El `FeeCalculationService` encapsula toda la lógica financiera. Se utilizan tipos `Decimal` en base de datos para evitar errores de punto flotante en los cálculos monetarios.
+    Merchant {
+        string id PK
+        string email
+        string name
+    }
 
-4.  **Orquestación y Resiliencia:**
-    *   **Pattern:** Implementación de **Circuit Breaker** en memoria. Si un PSP falla repetidamente, el sistema deja de intentarlo temporalmente para evitar latencia en cascada, haciendo failover inmediato al proveedor secundario.
+    FeeConfig {
+        string id PK
+        decimal fixedFeeUsd
+        decimal variableFeePercent
+        decimal fxMarkupPercent
+    }
 
-## 🚀 Características Implementadas
+    PaymentLink {
+        string id PK
+        decimal amountUsd
+        string status
+        datetime expiresAt
+    }
 
-*   ✅ **Motor de Fees Dinámico:** Soporta fee fija, fee variable (%) y markup sobre FX. Incluye lógica para incentivos (ej. primeras N transacciones gratis).
-*   ✅ **Dual-PSP Routing:** Intento primario (Stripe) con failover automático a secundario (Adyen) en caso de error técnico (5xx/Timeout), respetando errores de negocio (Decline 402).
-*   ✅ **Circuit Breaker:** Protección contra proveedores caídos.
-*   ✅ **Idempotencia:** Prevención de dobles cobros mediante `idempotencyKey`.
-*   ✅ **Simulación Realista:** Mocks de PSPs con latencia variable y tasas de éxito configurables vía variables de entorno.
-*   ✅ **Persistencia Robusta:** Modelo relacional normalizado con auditoría completa de intentos (`psp_attempts`).
+    Transaction {
+        string id PK
+        string status "PENDING|COMPLETED|FAILED"
+        decimal amountUsd
+        decimal amountMxn
+        decimal feesTotalUsd
+        string idempotencyKey
+    }
 
-## 🛠️ Instalación y Ejecución
+    PSPAttempt {
+        string id PK
+        string pspProvider "STRIPE|ADYEN"
+        boolean isPrimary
+        string status "SUCCESS|DECLINED|ERROR"
+        int latencyMs
+    }
+```
 
-### Prerrequisitos
+## Strategic Trade-offs and Key Decisions
+
+**1. Backend First vs. Full Stack**
+*   **Decision:** Invest 90% of the time in the fee engine, concurrency, and PSP error handling.
+*   **Rationale:** In Fintech, a UI glitch is a minor issue; a calculation error or a double charge is a financial and legal liability. The highest technical risk lies in the orchestration layer, so resources were allocated there.
+
+**2. Infrastructure (Render Blueprint vs. Terraform)**
+*   **Decision:** Used `render.yaml` (Declarative IaC) instead of raw Terraform modules.
+*   **Rationale:** For a 24h MVP, Render provides zero-config deployment, managed Postgres, and automatic SSL. This allowed focusing on business logic while still maintaining reproducible infrastructure.
+
+**3. FX and Fee Management**
+*   **Strategy:** Real-time rates with simulated Jitter (volatility).
+*   **Implementation:** The `FeeCalculationService` encapsulates all financial logic. Decimal types are used in the database and Prisma to prevent floating-point errors common in money calculations.
+
+**4. Resiliency Patterns**
+*   **Pattern:** In-memory Circuit Breaker.
+*   **Logic:** If a PSP fails repeatedly, the system stops trying it temporarily to prevent cascading latency, triggering an immediate failover to the secondary provider.
+
+## Implemented Features
+
+*   **Dynamic Fee Engine:** Supports fixed fees, variable fees (%), and FX markup. Includes logic for incentives (e.g., first N transactions free).
+*   **Dual-PSP Routing:** Primary attempt (Stripe) with automatic failover to secondary (Adyen) on technical errors (5xx/Timeout), while respecting business errors (Decline 402).
+*   **Circuit Breaker:** Protection against downtime from upstream providers.
+*   **Idempotency:** Prevents double charges using unique `idempotencyKey`.
+*   **Realistic Simulation:** PSP Mocks feature variable latency and configurable success rates via environment variables.
+*   **Full Audit Trail:** Normalized relational model recording every single interaction via `psp_attempts`.
+
+## Setup and Execution
+
+### Prerequisites
 *   Node.js 18+
-*   Docker & Docker Compose (Recomendado)
+*   Docker and Docker Compose (Recommended)
 
-### Opción A: Docker Compose (La forma rápida)
+### Option A: Docker Compose (Fastest)
 
-Levanta la base de datos y la API con un solo comando.
+Spins up both the PostgreSQL database and the API with one command.
 
 ```bash
-# 1. Levantar servicios
+# 1. Start services
 docker-compose up -d --build
 
-# 2. Ver logs (para ver la actividad de los mocks)
+# 2. View logs (to observe mock activity)
 docker-compose logs -f api
 ```
 
-La API estará disponible en: `http://localhost:3000`
+The API will be available at: `http://localhost:3000`
 
-### Opción B: Desarrollo Local
+### Option B: Local Development
 
 ```bash
-# 1. Instalar dependencias
+# 1. Install dependencies
 npm install
 
-# 2. Configurar entorno
+# 2. Configure environment
 cp .env.example .env
 
-# 3. Levantar base de datos (requiere PostgreSQL local o en Docker)
-# Asegúrate de que DATABASE_URL en .env apunte a tu DB
+# 3. Start Database (Requires local Postgres or Docker container)
+# Ensure DATABASE_URL in .env points to your DB
 
-# 4. Ejecutar migraciones y seed
+# 4. Run migrations and seed
 npx prisma migrate dev
 npm run prisma:seed
 
-# 5. Iniciar en modo watch
+# 5. Start in watch mode
 npm run dev
 ```
 
-## 🧪 Guía de Pruebas (API Walkthrough)
+## API Walkthrough (Manual Testing)
 
-Dado que no hay UI, utiliza esta guía para probar el flujo completo (End-to-End) usando `curl` o Postman.
+Since there is no Frontend UI, use this guide to test the complete End-to-End flow using `curl` or Postman.
 
 ### 1. Health Check
-Verificar que el sistema y la DB están online.
+Verify the system and database are online.
+
 ```bash
 curl http://localhost:3000/health
 ```
 
-### 2. Crear un Payment Link
-Simula la acción del merchant creando un cobro.
+### 2. Create a Payment Link
+Simulates the merchant creating a charge request.
+
 ```bash
 curl -X POST http://localhost:3000/payment-links \
   -H "Content-Type: application/json" \
   -d '{
     "merchantId": "merchant_default", 
     "amountUsd": 100.00, 
-    "description": "Consultoría Técnica",
+    "description": "Technical Consulting",
     "feeConfigOverride": {
         "fixedFeeUsd": 0.50,
         "variableFeePercent": 0.03,
@@ -127,18 +178,20 @@ curl -X POST http://localhost:3000/payment-links \
     }
   }'
 ```
-*Copia el `id` de la respuesta para los siguientes pasos.*
+*Note: Copy the `id` from the response for the next steps.*
 
-### 3. Obtener Preview de Fees (Simulación de Carga de Checkout)
-El frontend llamaría a esto para mostrar al usuario cuánto pagará y cuánto recibirá el merchant en MXN.
+### 3. Get Fee Preview (Simulating Checkout Load)
+The frontend would call this to display how much the user pays and how much the merchant receives in MXN.
+
 ```bash
-# Reemplaza LINK_ID con el ID obtenido en el paso anterior
+# Replace LINK_ID with the ID obtained in the previous step
 curl "http://localhost:3000/payment-links/LINK_ID?withFeePreview=true"
 ```
-> **Observa:** El campo `feePreview` muestra el desglose y la `fxRate` actual (que varía ligeramente en cada llamada por el Jitter simulado).
+*Note: The `feePreview` field shows the breakdown and the current `fxRate` (which varies slightly on each call due to simulated Jitter).*
 
-### 4. Procesar el Pago (Happy Path)
-Simula que el usuario ingresó su tarjeta.
+### 4. Process Payment (Happy Path)
+Simulates the user submitting their card token.
+
 ```bash
 curl -X POST "http://localhost:3000/payment-links/LINK_ID/payments" \
   -H "Content-Type: application/json" \
@@ -146,41 +199,42 @@ curl -X POST "http://localhost:3000/payment-links/LINK_ID/payments" \
     "cardToken": "tok_mock_stripe_visa_001",
     "pspProvider": "STRIPE",
     "idempotencyKey": "unique_key_12345",
-    "metadata": { "email": "cliente@ejemplo.com" }
+    "metadata": { "email": "client@example.com" }
   }'
 ```
 
-### 5. Simular Fallo y Failover (Chaos Testing)
-Para probar la resiliencia, puedes configurar las variables de entorno en `docker-compose.yml` o `.env`:
+### 5. Simulate Failure and Failover (Chaos Testing)
+To test resiliency, you can configure the environment variables in `docker-compose.yml` or `.env`:
 
-*   `STRIPE_MOCK_SUCCESS_RATE=0.0` (Forzar fallo de Stripe)
-*   `ADYEN_MOCK_SUCCESS_RATE=1.0` (Asegurar éxito de Adyen)
+*   `STRIPE_MOCK_SUCCESS_RATE=0.0` (Force Stripe failure)
+*   `ADYEN_MOCK_SUCCESS_RATE=1.0` (Ensure Adyen success)
 
-Al reintentar el pago (con una nueva `idempotencyKey`), verás en la respuesta:
-*   `pspProvider: "ADYEN"` (Indica que hubo failover exitoso).
-*   En los logs de la consola verás: `[Orchestration] Primary STRIPE failed... attempting failover to ADYEN`.
+When retrying the payment (with a new `idempotencyKey`), you will see in the response:
+*   `pspProvider: "ADYEN"` (Indicates successful failover).
+*   In the console logs: `[Orchestration] Primary STRIPE failed... attempting failover to ADYEN`.
 
-## 🔮 Roadmap (Siguientes Pasos)
+## Roadmap and Future Improvements
 
-Si el proyecto continuara hacia producción, estas serían las prioridades inmediatas:
+If this project were to continue towards production, these would be the immediate priorities:
 
-1.  **Frontend SPA:** Implementar la interfaz de checkout en Angular/React consumiendo los endpoints existentes.
-2.  **Tests de Integración (E2E):** Implementar suite de pruebas con `Supertest` que valide automáticamente los escenarios de failover y concurrencia.
-3.  **Seguridad:** Implementar validación de firmas HMAC para los Webhooks y autenticación JWT para los endpoints de creación de links.
-4.  **Infraestructura Cloud:** Migrar de Render a Terraform (AWS) con ECS para la API y RDS Multi-AZ para la base de datos.
+1.  **Frontend SPA:** Implement the checkout UI in Angular/React consuming the existing endpoints.
+2.  **Integration Tests (E2E):** Implement a test suite using `Supertest` to automatically validate failover scenarios and concurrency.
+3.  **Security:** Implement HMAC signature validation for Webhooks and JWT authentication for merchant endpoints.
+4.  **Cloud Infrastructure:** Migrate from Render to Terraform (AWS) with ECS for the API and RDS Multi-AZ for the database.
 
-## 📄 Estructura del Proyecto
+## Project Structure
 
 ```
 src/
-├── config/             # Configuración y env vars
-├── controllers/        # Manejo de HTTP requests
-├── services/           # Lógica de Negocio
-│   ├── psp/            # Mocks de Stripe y Adyen
-│   ├── fee-calculation # Motor de Fees
-│   ├── fx.service.ts   # Mock de tipo de cambio
-│   └── psp-orchestration # Lógica de Failover/Routing
-├── validators/         # Schemas Zod
-├── middleware/         # Error handling y validación
+├── config/             # Configuration and Env vars
+├── controllers/        # HTTP Request handling
+├── services/           # Domain Business Logic
+│   ├── psp/            # Stripe and Adyen Mocks
+│   ├── fee-calculation # Fee Engine
+│   ├── fx.service.ts   # FX Rate Mock
+│   └── psp-orchestration # Failover/Routing Logic
+├── validators/         # Zod Schemas
+├── middleware/         # Error handling and Validation
 └── index.ts            # Entry point
 ```
+Use Arrow Up and Arrow Down to select a turn, Enter to jump to it, and Escape to return to the chat.
