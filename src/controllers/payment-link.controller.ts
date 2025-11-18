@@ -1,9 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
-import { PrismaClient, PaymentLinkStatus } from '@prisma/client';
+import { PrismaClient, PaymentLinkStatus, Prisma } from '@prisma/client';
 import { CreatePaymentLinkDTO } from '../validators/payment-link.validator';
 import { feeCalculationService } from '../services/fee-calculation.service';
 import { FeeConfiguration } from '../types';
 import { config } from '../config';
+
+type FeeConfigFromPrisma = Prisma.FeeConfigGetPayload<object>;
 
 export class PaymentLinkController {
   private prisma: PrismaClient;
@@ -142,7 +144,7 @@ export class PaymentLinkController {
 
         // Calcular preview
         const calculation = await feeCalculationService.preview(
-          paymentLink.amountUsd.toNumber(),
+          Number(paymentLink.amountUsd),
           feeConfig,
           isFirstTx
         );
@@ -171,7 +173,7 @@ export class PaymentLinkController {
    */
   private getFeeConfig(paymentLink: {
     feeConfigOverride?: unknown | null;
-    merchant: { feeConfigs: FeeConfiguration[] };
+    merchant: { feeConfigs: FeeConfigFromPrisma[] };
   }): FeeConfiguration {
     if (paymentLink.feeConfigOverride) {
       return paymentLink.feeConfigOverride as FeeConfiguration;
@@ -189,9 +191,9 @@ export class PaymentLinkController {
     }
 
     return {
-      fixedFeeUsd: defaultConfig.fixedFeeUsd.toNumber(),
-      variableFeePercent: defaultConfig.variableFeePercent.toNumber(),
-      fxMarkupPercent: defaultConfig.fxMarkupPercent.toNumber(),
+      fixedFeeUsd: Number(defaultConfig.fixedFeeUsd),
+      variableFeePercent: Number(defaultConfig.variableFeePercent),
+      fxMarkupPercent: Number(defaultConfig.fxMarkupPercent),
       firstTxFreeCount: defaultConfig.firstTxFreeCount,
     };
   }

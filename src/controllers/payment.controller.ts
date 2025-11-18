@@ -5,6 +5,8 @@ import { feeCalculationService } from '../services/fee-calculation.service';
 import { PSPOrchestrationService } from '../services/psp-orchestration.service';
 import { FeeConfiguration, PSPChargeRequest } from '../types';
 
+type FeeConfigFromPrisma = Prisma.FeeConfigGetPayload<object>;
+
 export class PaymentController {
   private prisma: PrismaClient;
   private orchestrationService: PSPOrchestrationService;
@@ -95,7 +97,7 @@ export class PaymentController {
 
       // Calcular fees con FX rate actual
       const calculation = await feeCalculationService.calculate(
-        paymentLink.amountUsd.toNumber(),
+        Number(paymentLink.amountUsd),
         feeConfig,
         isFirstTx
       );
@@ -181,7 +183,7 @@ export class PaymentController {
    */
   private getFeeConfig(paymentLink: {
     feeConfigOverride?: unknown | null;
-    merchant: { feeConfigs: FeeConfiguration[] };
+    merchant: { feeConfigs: FeeConfigFromPrisma[] };
   }): FeeConfiguration {
     if (paymentLink.feeConfigOverride) {
       return paymentLink.feeConfigOverride as FeeConfiguration;
@@ -198,9 +200,9 @@ export class PaymentController {
     }
 
     return {
-      fixedFeeUsd: defaultConfig.fixedFeeUsd.toNumber(),
-      variableFeePercent: defaultConfig.variableFeePercent.toNumber(),
-      fxMarkupPercent: defaultConfig.fxMarkupPercent.toNumber(),
+      fixedFeeUsd: Number(defaultConfig.fixedFeeUsd),
+      variableFeePercent: Number(defaultConfig.variableFeePercent),
+      fxMarkupPercent: Number(defaultConfig.fxMarkupPercent),
       firstTxFreeCount: defaultConfig.firstTxFreeCount,
     };
   }
