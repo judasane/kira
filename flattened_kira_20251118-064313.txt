@@ -1,9 +1,9 @@
 ==================================
 FLATTENED: kira
 Type: Submodule
-Generated at: Mon Nov 17 22:48:25 UTC 2025
+Generated at: Tue Nov 18 06:43:13 UTC 2025
 Branch: development
-Commit: 409ba189c7c1e53629d06dfbbb4365faad7db246
+Commit: 8e8ff2acf0bb2a5168b7ac7fc2516185d0e5a9c9
 Repository: judasane/kira
 ==================================
 
@@ -80,6 +80,33 @@ CIRCUIT_BREAKER_TIMEOUT_MS=60000
 }
 
 --- END OF FILE: .eslintrc.json ---
+
+--- START OF FILE: .github/workflows/ci.yml ---
+name: Run lint, build and tests
+
+on:
+  push:
+
+jobs:
+  lint-build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '22.x'
+      - name: Install dependencies
+        run: npm install # Using npm install as there is no package-lock.json
+      - name: Lint
+        run: npm run lint
+      - name: Build
+        run: npm run build
+      - name: Test
+        run: npm run test
+
+--- END OF FILE: .github/workflows/ci.yml ---
 
 --- START OF FILE: .github/workflows/main.yml ---
 name: 🦉 Flatten Repository
@@ -1209,33 +1236,41 @@ volumes:
     "db:push": "prisma db push",
     "db:reset": "prisma migrate reset --force",
     "lint": "eslint src --ext .ts",
-    "test": "echo \"No tests yet\" && exit 0"
+    "test": "vitest run --coverage"
   },
-  "keywords": ["payment", "api", "express", "typescript"],
+  "keywords": [
+    "payment",
+    "api",
+    "express",
+    "typescript"
+  ],
   "author": "",
   "license": "MIT",
   "dependencies": {
     "@prisma/client": "^5.7.1",
-    "express": "^4.18.2",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/morgan": "^1.9.9",
+    "@types/node": "^20.10.5",
+    "@types/uuid": "^9.0.7",
     "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
     "helmet": "^7.1.0",
     "morgan": "^1.10.0",
-    "dotenv": "^16.3.1",
-    "zod": "^3.22.4",
-    "uuid": "^9.0.1",
-    "typescript": "^5.3.3",
     "prisma": "^5.7.1",
-    "@types/node": "^20.10.5",
-    "@types/express": "^4.17.21",
-    "@types/cors": "^2.8.17",
-    "@types/morgan": "^1.9.9",
-    "@types/uuid": "^9.0.7"
+    "typescript": "^5.3.3",
+    "uuid": "^9.0.1",
+    "zod": "^3.22.4"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^6.15.0",
     "@typescript-eslint/parser": "^6.15.0",
+    "@vitest/coverage-v8": "^4.0.10",
     "eslint": "^8.56.0",
-    "tsx": "^4.7.0"
+    "ts-node": "^10.9.2",
+    "tsx": "^4.7.0",
+    "vitest": "^4.0.10"
   },
   "engines": {
     "node": ">=20.0.0"
@@ -2023,7 +2058,7 @@ export class PaymentLinkController {
    * Crear un nuevo payment link
    */
   createPaymentLink = async (
-    req: Request<{}, {}, CreatePaymentLinkDTO>,
+    req: Request<object, object, CreatePaymentLinkDTO>,
     res: Response,
     next: NextFunction
   ): Promise<void> => {
@@ -2077,7 +2112,7 @@ export class PaymentLinkController {
    * Obtener un payment link con preview de fees
    */
   getPaymentLink = async (
-    req: Request<{ id: string }, {}, {}, { withFeePreview?: string }>,
+    req: Request<{ id: string }, object, object, { withFeePreview?: string }>,
     res: Response,
     next: NextFunction
   ): Promise<void> => {
@@ -2117,7 +2152,7 @@ export class PaymentLinkController {
 
       // Construir response base
       const checkoutUrl = `${config.checkoutBaseUrl}/checkout/${paymentLink.id}`;
-      const response: any = {
+      const response: Record<string, unknown> = {
         id: paymentLink.id,
         merchantId: paymentLink.merchantId,
         status: paymentLink.status,
@@ -2175,7 +2210,10 @@ export class PaymentLinkController {
   /**
    * Helper: Obtiene la configuración de fees (override o default)
    */
-  private getFeeConfig(paymentLink: any): FeeConfiguration {
+  private getFeeConfig(paymentLink: {
+    feeConfigOverride?: unknown | null;
+    merchant: { feeConfigs: FeeConfiguration[] };
+  }): FeeConfiguration {
     if (paymentLink.feeConfigOverride) {
       return paymentLink.feeConfigOverride as FeeConfiguration;
     }
@@ -2204,7 +2242,7 @@ export class PaymentLinkController {
 
 --- START OF FILE: src/controllers/payment.controller.ts ---
 import { Request, Response, NextFunction } from 'express';
-import { PrismaClient, PaymentLinkStatus, TransactionStatus } from '@prisma/client';
+import { PrismaClient, PaymentLinkStatus, TransactionStatus, Prisma } from '@prisma/client';
 import { ProcessPaymentDTO } from '../validators/payment-link.validator';
 import { feeCalculationService } from '../services/fee-calculation.service';
 import { PSPOrchestrationService } from '../services/psp-orchestration.service';
@@ -2224,7 +2262,7 @@ export class PaymentController {
    * Procesar un pago sobre un payment link
    */
   processPayment = async (
-    req: Request<{ id: string }, {}, ProcessPaymentDTO>,
+    req: Request<{ id: string }, object, ProcessPaymentDTO>,
     res: Response,
     next: NextFunction
   ): Promise<void> => {
@@ -2316,7 +2354,7 @@ export class PaymentController {
           amountMxn: calculation.recipientAmountMxn,
           fxRateApplied: calculation.fxRateWithMarkup,
           feesTotalUsd: calculation.fees.totalFeesUsd,
-          metadata: metadata as any,
+          metadata: metadata as Prisma.JsonObject,
         },
       });
 
@@ -2326,7 +2364,7 @@ export class PaymentController {
         currency: 'usd',
         token: cardToken as string,
         idempotencyKey: idempotencyKey as string,
-        metadata: metadata as any,
+        metadata: metadata as Prisma.JsonObject,
       };
 
       const orchestrationResult = await this.orchestrationService.executeCharge(
@@ -2384,7 +2422,10 @@ export class PaymentController {
   /**
    * Helper: Obtiene la configuración de fees
    */
-  private getFeeConfig(paymentLink: any): FeeConfiguration {
+  private getFeeConfig(paymentLink: {
+    feeConfigOverride?: unknown | null;
+    merchant: { feeConfigs: FeeConfiguration[] };
+  }): FeeConfiguration {
     if (paymentLink.feeConfigOverride) {
       return paymentLink.feeConfigOverride as FeeConfiguration;
     }
@@ -2427,12 +2468,12 @@ export class WebhookController {
    * Recibe webhooks de PSPs mock
    */
   handlePSPWebhook = async (
-    req: Request<{}, {}, PSPWebhookDTO>,
+    req: Request<object, object, PSPWebhookDTO>,
     res: Response,
     next: NextFunction
   ): Promise<void> => {
     try {
-      const { provider, eventType, eventId: _eventId, data } = req.body;
+      const { provider, eventType, data } = req.body;
 
       console.log(`[Webhook] Received ${eventType} from ${provider}:`, data);
 
@@ -2865,6 +2906,119 @@ class CircuitBreakerManager {
 export const circuitBreakerManager = new CircuitBreakerManager();
 
 --- END OF FILE: src/services/circuit-breaker.ts ---
+
+--- START OF FILE: src/services/fee-calculation.service.spec.ts ---
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { FeeCalculationService } from './fee-calculation.service';
+import { fxService } from './fx.service';
+import { FeeConfiguration } from '../types';
+
+// Mock the fxService dependency
+vi.mock('./fx.service', () => ({
+  fxService: {
+    getRate: vi.fn(),
+    applyMarkup: vi.fn(),
+  },
+}));
+
+describe('FeeCalculationService', () => {
+  let feeCalculationService: FeeCalculationService;
+  const mockFxRate = 20.0;
+  const mockFeeConfig: FeeConfiguration = {
+    fixedFeeUsd: 1.0,
+    variableFeePercent: 0.02, // 2%
+    fxMarkupPercent: 0.01, // 1%
+    firstTxFreeCount: 1,
+  };
+
+  beforeEach(() => {
+    feeCalculationService = new FeeCalculationService();
+    // Reset mocks before each test
+    vi.resetAllMocks();
+
+    // Default mock implementations
+    vi.mocked(fxService.getRate).mockResolvedValue({ rate: mockFxRate });
+    vi.mocked(fxService.applyMarkup).mockImplementation(
+      (rate, markup) => rate * (1 + markup)
+    );
+  });
+
+  it('should calculate fees correctly for a standard transaction', async () => {
+    const amountUsd = 100;
+
+    const result = await feeCalculationService.calculate(
+      amountUsd,
+      mockFeeConfig,
+      false
+    );
+
+    // 1. Fixed fee
+    const expectedFixedFee = 1.0;
+    // 2. Variable fee (2% of 100)
+    const expectedVariableFee = 100 * 0.02; // 2.0
+    // 3. FX Markup fee (1% of 100)
+    const expectedFxMarkup = 100 * 0.01; // 1.0
+    // 4. Total fees
+    const expectedTotalFees = expectedFixedFee + expectedVariableFee + expectedFxMarkup; // 4.0
+
+    expect(result.fees.fixedFeeUsd).toBe(expectedFixedFee);
+    expect(result.fees.variableFeeUsd).toBe(expectedVariableFee);
+    expect(result.fees.fxMarkupUsd).toBe(expectedFxMarkup);
+    expect(result.fees.totalFeesUsd).toBe(expectedTotalFees);
+    expect(result.totalChargeUsd).toBe(amountUsd + expectedTotalFees);
+    expect(result.recipientAmountMxn).toBe(100 * (mockFxRate * (1 + 0.01)));
+
+    // Verify that fxService.getRate was called since no rate was provided
+    expect(fxService.getRate).toHaveBeenCalledWith('USD', 'MXN');
+  });
+
+  it('should apply the first transaction discount correctly', async () => {
+    const amountUsd = 100;
+
+    const result = await feeCalculationService.calculate(
+      amountUsd,
+      mockFeeConfig,
+      true // isFirstTransaction = true
+    );
+
+    const totalFeesBeforeDiscount = 1.0 + 100 * 0.02 + 100 * 0.01; // 4.0
+
+    expect(result.fees.firstTxDiscountUsd).toBe(totalFeesBeforeDiscount);
+    expect(result.fees.totalFeesUsd).toBe(0);
+    expect(result.totalChargeUsd).toBe(amountUsd); // Total charge is just the base amount
+  });
+
+  it('should use the provided fxRate instead of fetching it', async () => {
+    const amountUsd = 100;
+    const providedFxRate = 21.5;
+
+    await feeCalculationService.calculate(
+      amountUsd,
+      mockFeeConfig,
+      false,
+      providedFxRate // Provide the rate directly
+    );
+
+    // Verify that fxService.getRate was NOT called
+    expect(fxService.getRate).not.toHaveBeenCalled();
+    // Verify that the provided rate was used for markup calculation
+    expect(fxService.applyMarkup).toHaveBeenCalledWith(
+      providedFxRate,
+      mockFeeConfig.fxMarkupPercent
+    );
+  });
+
+  it('preview method should call calculate method', async () => {
+    const amountUsd = 150;
+    const calculateSpy = vi.spyOn(feeCalculationService, 'calculate');
+
+    await feeCalculationService.preview(amountUsd, mockFeeConfig, false);
+
+    expect(calculateSpy).toHaveBeenCalledWith(amountUsd, mockFeeConfig, false);
+  });
+});
+
+--- END OF FILE: src/services/fee-calculation.service.spec.ts ---
 
 --- START OF FILE: src/services/fee-calculation.service.ts ---
 import { FeeConfiguration, FeeBreakdown, FeeCalculationResult } from '../types';
@@ -3746,4 +3900,31 @@ export type PSPWebhookDTO = z.infer<typeof pspWebhookSchema>;
 }
 
 --- END OF FILE: tsconfig.json ---
+
+--- START OF FILE: vitest.config.ts ---
+import { defineConfig } from 'vitest/config';
+
+export default defineConfig({
+  test: {
+    globals: true,
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html'],
+      include: ['src/**/*.ts'],
+      exclude: [
+        'src/index.ts',
+        'src/app.ts',
+        'src/config/**',
+        'src/types/**',
+        'src/routes/**',
+        'src/middleware/**',
+        'src/validators/**',
+        '**/node_modules/**',
+      ],
+      all: true,
+    },
+  },
+});
+
+--- END OF FILE: vitest.config.ts ---
 
