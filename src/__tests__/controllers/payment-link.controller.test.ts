@@ -96,7 +96,7 @@ describe('PaymentLinkController', () => {
           description: 'Test payment',
           status: PaymentLinkStatus.ACTIVE,
           expiresAt: null,
-          feeConfigOverride: null,
+          feeConfigOverride: undefined,
         },
       });
 
