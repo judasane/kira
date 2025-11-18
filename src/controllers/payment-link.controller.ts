@@ -2,8 +2,8 @@ import { Request, Response, NextFunction } from 'express';
 import { PrismaClient, PaymentLinkStatus } from '@prisma/client';
 import { CreatePaymentLinkDTO } from '../validators/payment-link.validator';
 import { feeCalculationService } from '../services/fee-calculation.service';
-import { FeeConfiguration } from '../types';
 import { config } from '../config';
+import { getFeeConfig } from '../utils/fee-config.utils';
 
 export class PaymentLinkController {
   private prisma: PrismaClient;
@@ -126,7 +126,7 @@ export class PaymentLinkController {
       // Calcular preview de fees si se solicitó
       if (withFeePreview) {
         // Obtener fee config (override o default del merchant)
-        const feeConfig = this.getFeeConfig(paymentLink);
+        const feeConfig = getFeeConfig(paymentLink);
 
         // Contar transacciones del merchant para incentivo
         const txCount = await this.prisma.transaction.count({
@@ -142,7 +142,7 @@ export class PaymentLinkController {
 
         // Calcular preview
         const calculation = await feeCalculationService.preview(
-          paymentLink.amountUsd.toNumber(),
+          Number(paymentLink.amountUsd),
           feeConfig,
           isFirstTx
         );
@@ -165,34 +165,4 @@ export class PaymentLinkController {
       next(error);
     }
   };
-
-  /**
-   * Helper: Obtiene la configuración de fees (override o default)
-   */
-  private getFeeConfig(paymentLink: {
-    feeConfigOverride?: unknown | null;
-    merchant: { feeConfigs: FeeConfiguration[] };
-  }): FeeConfiguration {
-    if (paymentLink.feeConfigOverride) {
-      return paymentLink.feeConfigOverride as FeeConfiguration;
-    }
-
-    const defaultConfig = paymentLink.merchant.feeConfigs[0];
-    if (!defaultConfig) {
-      // Fallback a valores por defecto
-      return {
-        fixedFeeUsd: 0.30,
-        variableFeePercent: 0.029,
-        fxMarkupPercent: 0.015,
-        firstTxFreeCount: 0,
-      };
-    }
-
-    return {
-      fixedFeeUsd: defaultConfig.fixedFeeUsd.toNumber(),
-      variableFeePercent: defaultConfig.variableFeePercent.toNumber(),
-      fxMarkupPercent: defaultConfig.fxMarkupPercent.toNumber(),
-      firstTxFreeCount: defaultConfig.firstTxFreeCount,
-    };
-  }
 }
