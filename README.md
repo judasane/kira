@@ -1,11 +1,52 @@
 # Kira Payment Orchestrator API
 
+<div align="center">
+
+![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
+
+**High-performance backend for orchestrating cross-border payments with built-in failover and real-time fee calculation.**
+
+[Swagger Docs](http://localhost:3000/api-docs) · [Frontend Repo](https://github.com/judasane/kira-frontend)
+
+</div>
+
+---
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Implemented Features](#implemented-features)
+- [Architecture and Design](#architecture-and-design)
+- [Strategic Trade-offs and Key Decisions](#strategic-trade-offs-and-key-decisions)
+- [Tech Stack](#tech-stack)
+- [Setup and Execution](#setup-and-execution)
+- [API Documentation and Testing](#api-documentation-and-testing)
+- [Roadmap and Future Improvements](#roadmap-and-future-improvements)
+- [Project Structure](#project-structure)
+- [Contributing](#contributing)
+
+---
+
+## Overview
+
 **Challenge Context (24h Sprint)**
 This project was built under a strict 24-hour timebox. Due to this constraint, a strategic decision was made to prioritize Backend robustness, financial integrity (ACID), and orchestration logic over Frontend implementation and complex Infrastructure-as-Code (Terraform). The goal was to deliver a solid transactional core capable of handling money, failures, and currency conversion securely.
 
-## Project Description
-
 A Cross-Border Payment Orchestration backend (USD to MXN) that manages Payment Links, complex fee calculations, real-time FX conversion, and intelligent routing between PSPs (Stripe and Adyen) with automatic failover mechanisms.
+
+---
+
+## Implemented Features
+
+*   **Dynamic Fee Engine:** Supports fixed fees, variable fees (%), and FX markup. Includes logic for incentives (e.g., first N transactions free).
+*   **Dual-PSP Routing:** Primary attempt (Stripe) with automatic failover to secondary (Adyen) on technical errors (5xx/Timeout), while respecting business errors (Decline 402).
+*   **Circuit Breaker:** Protection against downtime from upstream providers.
+*   **Idempotency:** Prevents double charges using unique `idempotencyKey`.
+*   **Realistic Simulation:** PSP Mocks feature variable latency and configurable success rates via environment variables.
+*   **Full Audit Trail:** Normalized relational model recording every single interaction via `psp_attempts`.
+
+---
 
 ## Architecture and Design
 
@@ -82,6 +123,8 @@ erDiagram
     }
 ```
 
+---
+
 ## Strategic Trade-offs and Key Decisions
 
 **1. Backend First vs. Full Stack**
@@ -100,14 +143,21 @@ erDiagram
 *   **Pattern:** In-memory Circuit Breaker.
 *   **Logic:** If a PSP fails repeatedly, the system stops trying it temporarily to prevent cascading latency, triggering an immediate failover to the secondary provider.
 
-## Implemented Features
+---
 
-*   **Dynamic Fee Engine:** Supports fixed fees, variable fees (%), and FX markup. Includes logic for incentives (e.g., first N transactions free).
-*   **Dual-PSP Routing:** Primary attempt (Stripe) with automatic failover to secondary (Adyen) on technical errors (5xx/Timeout), while respecting business errors (Decline 402).
-*   **Circuit Breaker:** Protection against downtime from upstream providers.
-*   **Idempotency:** Prevents double charges using unique `idempotencyKey`.
-*   **Realistic Simulation:** PSP Mocks feature variable latency and configurable success rates via environment variables.
-*   **Full Audit Trail:** Normalized relational model recording every single interaction via `psp_attempts`.
+## Tech Stack
+
+| Category | Technology |
+|----------|-----------|
+| **Framework** | Express.js |
+| **Language** | TypeScript |
+| **ORM** | Prisma |
+| **Database** | PostgreSQL |
+| **Validation** | Zod |
+| **API Docs** | OpenAPI (Swagger) |
+| **Deployment** | Docker, Render |
+
+---
 
 ## Setup and Execution
 
@@ -126,8 +176,6 @@ docker-compose up -d --build
 # 2. View logs (to observe mock activity)
 docker-compose logs -f api
 ```
-
-The API will be available at: `http://localhost:3000`
 
 ### Option B: Local Development
 
@@ -148,70 +196,21 @@ npm run prisma:seed
 # 5. Start in watch mode
 npm run dev
 ```
+---
 
-## API Walkthrough (Manual Testing)
+## API Documentation and Testing
 
-Since there is no Frontend UI, use this guide to test the complete End-to-End flow using `curl` or Postman.
+The API is fully documented using OpenAPI (Swagger). You can explore all the available endpoints, view their schemas, and test them directly from your browser.
 
-### 1. Health Check
-Verify the system and database are online.
+When the application starts, it will log the URL for the interactive API documentation to the console. The URL will look something like this:
 
-```bash
-curl http://localhost:3000/health
-```
+`http://localhost:3000/api-docs`
 
-### 2. Create a Payment Link
-Simulates the merchant creating a charge request.
+If you are running in a cloud development environment (like Firebase Studio or Gitpod), the URL will be the public URL of your workspace.
 
-```bash
-curl -X POST http://localhost:3000/payment-links \
-  -H "Content-Type: application/json" \
-  -d '{
-    "merchantId": "merchant_default", 
-    "amountUsd": 100.00, 
-    "description": "Technical Consulting",
-    "feeConfigOverride": {
-        "fixedFeeUsd": 0.50,
-        "variableFeePercent": 0.03,
-        "fxMarkupPercent": 0.015,
-        "firstTxFreeCount": 0
-    }
-  }'
-```
-*Note: Copy the `id` from the response for the next steps.*
+This interface provides a much more convenient way to understand and interact with the API compared to using manual `curl` commands.
 
-### 3. Get Fee Preview (Simulating Checkout Load)
-The frontend would call this to display how much the user pays and how much the merchant receives in MXN.
-
-```bash
-# Replace LINK_ID with the ID obtained in the previous step
-curl "http://localhost:3000/payment-links/LINK_ID?withFeePreview=true"
-```
-*Note: The `feePreview` field shows the breakdown and the current `fxRate` (which varies slightly on each call due to simulated Jitter).*
-
-### 4. Process Payment (Happy Path)
-Simulates the user submitting their card token.
-
-```bash
-curl -X POST "http://localhost:3000/payment-links/LINK_ID/payments" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "cardToken": "tok_mock_stripe_visa_001",
-    "pspProvider": "STRIPE",
-    "idempotencyKey": "unique_key_12345",
-    "metadata": { "email": "client@example.com" }
-  }'
-```
-
-### 5. Simulate Failure and Failover (Chaos Testing)
-To test resiliency, you can configure the environment variables in `docker-compose.yml` or `.env`:
-
-*   `STRIPE_MOCK_SUCCESS_RATE=0.0` (Force Stripe failure)
-*   `ADYEN_MOCK_SUCCESS_RATE=1.0` (Ensure Adyen success)
-
-When retrying the payment (with a new `idempotencyKey`), you will see in the response:
-*   `pspProvider: "ADYEN"` (Indicates successful failover).
-*   In the console logs: `[Orchestration] Primary STRIPE failed... attempting failover to ADYEN`.
+---
 
 ## Roadmap and Future Improvements
 
@@ -221,6 +220,8 @@ If this project were to continue towards production, these would be the immediat
 2.  **Integration Tests (E2E):** Implement a test suite using `Supertest` to automatically validate failover scenarios and concurrency.
 3.  **Security:** Implement HMAC signature validation for Webhooks and JWT authentication for merchant endpoints.
 4.  **Cloud Infrastructure:** Migrate from Render to Terraform (AWS) with ECS for the API and RDS Multi-AZ for the database.
+
+---
 
 ## Project Structure
 
@@ -237,4 +238,24 @@ src/
 ├── middleware/         # Error handling and Validation
 └── index.ts            # Entry point
 ```
-Use Arrow Up and Arrow Down to select a turn, Enter to jump to it, and Escape to return to the chat.
+
+---
+
+## Contributing
+
+This project was built as part of the **Kira Product Engineer Assessment**.
+
+For development:
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'feat: add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+
+<div align="center">
+
+**Made with love for Kira**
+
+</div>
