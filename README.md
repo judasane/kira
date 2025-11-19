@@ -1,11 +1,52 @@
 # Kira Payment Orchestrator API
 
+<div align="center">
+
+![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
+
+**High-performance backend for orchestrating cross-border payments with built-in failover and real-time fee calculation.**
+
+[Swagger Docs](http://localhost:3000/api-docs) · [Frontend Repo](https://github.com/judasane/kira-frontend)
+
+</div>
+
+---
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Implemented Features](#implemented-features)
+- [Architecture and Design](#architecture-and-design)
+- [Strategic Trade-offs and Key Decisions](#strategic-trade-offs-and-key-decisions)
+- [Tech Stack](#tech-stack)
+- [Setup and Execution](#setup-and-execution)
+- [API Documentation and Testing](#api-documentation-and-testing)
+- [Roadmap and Future Improvements](#roadmap-and-future-improvements)
+- [Project Structure](#project-structure)
+- [Contributing](#contributing)
+
+---
+
+## Overview
+
 **Challenge Context (24h Sprint)**
 This project was built under a strict 24-hour timebox. Due to this constraint, a strategic decision was made to prioritize Backend robustness, financial integrity (ACID), and orchestration logic over Frontend implementation and complex Infrastructure-as-Code (Terraform). The goal was to deliver a solid transactional core capable of handling money, failures, and currency conversion securely.
 
-## Project Description
-
 A Cross-Border Payment Orchestration backend (USD to MXN) that manages Payment Links, complex fee calculations, real-time FX conversion, and intelligent routing between PSPs (Stripe and Adyen) with automatic failover mechanisms.
+
+---
+
+## Implemented Features
+
+*   **Dynamic Fee Engine:** Supports fixed fees, variable fees (%), and FX markup. Includes logic for incentives (e.g., first N transactions free).
+*   **Dual-PSP Routing:** Primary attempt (Stripe) with automatic failover to secondary (Adyen) on technical errors (5xx/Timeout), while respecting business errors (Decline 402).
+*   **Circuit Breaker:** Protection against downtime from upstream providers.
+*   **Idempotency:** Prevents double charges using unique `idempotencyKey`.
+*   **Realistic Simulation:** PSP Mocks feature variable latency and configurable success rates via environment variables.
+*   **Full Audit Trail:** Normalized relational model recording every single interaction via `psp_attempts`.
+
+---
 
 ## Architecture and Design
 
@@ -82,6 +123,8 @@ erDiagram
     }
 ```
 
+---
+
 ## Strategic Trade-offs and Key Decisions
 
 **1. Backend First vs. Full Stack**
@@ -100,14 +143,21 @@ erDiagram
 *   **Pattern:** In-memory Circuit Breaker.
 *   **Logic:** If a PSP fails repeatedly, the system stops trying it temporarily to prevent cascading latency, triggering an immediate failover to the secondary provider.
 
-## Implemented Features
+---
 
-*   **Dynamic Fee Engine:** Supports fixed fees, variable fees (%), and FX markup. Includes logic for incentives (e.g., first N transactions free).
-*   **Dual-PSP Routing:** Primary attempt (Stripe) with automatic failover to secondary (Adyen) on technical errors (5xx/Timeout), while respecting business errors (Decline 402).
-*   **Circuit Breaker:** Protection against downtime from upstream providers.
-*   **Idempotency:** Prevents double charges using unique `idempotencyKey`.
-*   **Realistic Simulation:** PSP Mocks feature variable latency and configurable success rates via environment variables.
-*   **Full Audit Trail:** Normalized relational model recording every single interaction via `psp_attempts`.
+## Tech Stack
+
+| Category | Technology |
+|----------|-----------|
+| **Framework** | Express.js |
+| **Language** | TypeScript |
+| **ORM** | Prisma |
+| **Database** | PostgreSQL |
+| **Validation** | Zod |
+| **API Docs** | OpenAPI (Swagger) |
+| **Deployment** | Docker, Render |
+
+---
 
 ## Setup and Execution
 
@@ -146,6 +196,7 @@ npm run prisma:seed
 # 5. Start in watch mode
 npm run dev
 ```
+---
 
 ## API Documentation and Testing
 
@@ -167,6 +218,8 @@ If this project were to continue towards production, these would be the immediat
 2.  **Integration Tests (E2E):** Implement a test suite using `Supertest` to automatically validate failover scenarios and concurrency.
 3.  **Security:** Implement HMAC signature validation for Webhooks and JWT authentication for merchant endpoints.
 4.  **Cloud Infrastructure:** Migrate from Render to Terraform (AWS) with ECS for the API and RDS Multi-AZ for the database.
+
+---
 
 ## Project Structure
 
