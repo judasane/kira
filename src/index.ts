@@ -15,17 +15,13 @@ const server = app.listen(config.port, () => {
   console.log('');
   console.log('🚀 Kira Payment Backend API');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log(`📍 Server:      http://localhost:${config.port}`);
+  console.log(`📍 Server:      ${config.baseUrl}`);
   console.log(`🌍 Environment: ${config.nodeEnv}`);
   console.log(`🗄️  Database:    ${config.databaseUrl ? 'Connected' : 'Not configured'}`);
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log('');
-  console.log('📚 Available endpoints:');
-  console.log('   GET  /health');
-  console.log('   POST /payment-links');
-  console.log('   GET  /payment-links/:id');
-  console.log('   POST /payment-links/:id/payments');
-  console.log('   POST /webhooks/psp');
+  console.log('📚 API Documentation:');
+  console.log(`   Swagger UI: ${config.baseUrl}/api-docs`);
   console.log('');
 });
 

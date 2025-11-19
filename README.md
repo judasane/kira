@@ -127,8 +127,6 @@ docker-compose up -d --build
 docker-compose logs -f api
 ```
 
-The API will be available at: `http://localhost:3000`
-
 ### Option B: Local Development
 
 ```bash
@@ -149,69 +147,17 @@ npm run prisma:seed
 npm run dev
 ```
 
-## API Walkthrough (Manual Testing)
+## API Documentation and Testing
 
-Since there is no Frontend UI, use this guide to test the complete End-to-End flow using `curl` or Postman.
+The API is fully documented using OpenAPI (Swagger). You can explore all the available endpoints, view their schemas, and test them directly from your browser.
 
-### 1. Health Check
-Verify the system and database are online.
+When the application starts, it will log the URL for the interactive API documentation to the console. The URL will look something like this:
 
-```bash
-curl http://localhost:3000/health
-```
+`http://localhost:3000/api-docs`
 
-### 2. Create a Payment Link
-Simulates the merchant creating a charge request.
+If you are running in a cloud development environment (like Firebase Studio or Gitpod), the URL will be the public URL of your workspace.
 
-```bash
-curl -X POST http://localhost:3000/payment-links \
-  -H "Content-Type: application/json" \
-  -d '{
-    "merchantId": "merchant_default", 
-    "amountUsd": 100.00, 
-    "description": "Technical Consulting",
-    "feeConfigOverride": {
-        "fixedFeeUsd": 0.50,
-        "variableFeePercent": 0.03,
-        "fxMarkupPercent": 0.015,
-        "firstTxFreeCount": 0
-    }
-  }'
-```
-*Note: Copy the `id` from the response for the next steps.*
-
-### 3. Get Fee Preview (Simulating Checkout Load)
-The frontend would call this to display how much the user pays and how much the merchant receives in MXN.
-
-```bash
-# Replace LINK_ID with the ID obtained in the previous step
-curl "http://localhost:3000/payment-links/LINK_ID?withFeePreview=true"
-```
-*Note: The `feePreview` field shows the breakdown and the current `fxRate` (which varies slightly on each call due to simulated Jitter).*
-
-### 4. Process Payment (Happy Path)
-Simulates the user submitting their card token.
-
-```bash
-curl -X POST "http://localhost:3000/payment-links/LINK_ID/payments" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "cardToken": "tok_mock_stripe_visa_001",
-    "pspProvider": "STRIPE",
-    "idempotencyKey": "unique_key_12345",
-    "metadata": { "email": "client@example.com" }
-  }'
-```
-
-### 5. Simulate Failure and Failover (Chaos Testing)
-To test resiliency, you can configure the environment variables in `docker-compose.yml` or `.env`:
-
-*   `STRIPE_MOCK_SUCCESS_RATE=0.0` (Force Stripe failure)
-*   `ADYEN_MOCK_SUCCESS_RATE=1.0` (Ensure Adyen success)
-
-When retrying the payment (with a new `idempotencyKey`), you will see in the response:
-*   `pspProvider: "ADYEN"` (Indicates successful failover).
-*   In the console logs: `[Orchestration] Primary STRIPE failed... attempting failover to ADYEN`.
+This interface provides a much more convenient way to understand and interact with the API compared to using manual `curl` commands.
 
 ## Roadmap and Future Improvements
 
@@ -237,4 +183,3 @@ src/
 ├── middleware/         # Error handling and Validation
 └── index.ts            # Entry point
 ```
-Use Arrow Up and Arrow Down to select a turn, Enter to jump to it, and Escape to return to the chat.
