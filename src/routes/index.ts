@@ -10,9 +10,19 @@ import {
   processPaymentSchema,
   pspWebhookSchema,
 } from '../validators/payment-link.validator';
+import swaggerUi from 'swagger-ui-express';
+import YAML from 'yamljs';
+import path from 'path';
+import { config } from '../config';
 
 export function createRouter(prisma: PrismaClient): Router {
   const router = Router();
+
+  // Swagger Docs
+  const swaggerDocument = YAML.load(path.join(__dirname, '../../swagger.yml'));
+  // Dynamically set the server URL
+  swaggerDocument.servers = [{ url: config.baseUrl }];
+  router.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
   // Inicializar controladores
   const paymentLinkController = new PaymentLinkController(prisma);

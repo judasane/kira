@@ -1,0 +1,414 @@
+openapi: 3.0.3
+info:
+  title: Kira Payment Link API
+  version: 1.0.0
+  description: >
+    API para crear enlaces de pago en USD, previsualizar fees y FX,
+    procesar pagos con orquestación de PSP mockeados y manejar webhooks simulados.
+
+servers:
+  - url: https://kira-payment-api.onrender.com
+    description: Staging
+
+tags:
+  - name: PaymentLinks
+    description: CRUD y obtención de enlaces de pago
+  - name: Payments
+    description: Procesamiento de pagos sobre un payment link
+  - name: Webhooks
+    description: Recepción de callbacks de PSP mockeados
+  - name: Health
+    description: Salud del servicio
+
+paths:
+  /payment-links:
+    post:
+      tags: [PaymentLinks]
+      summary: Crear un payment link
+      description: >
+        Crea un nuevo enlace de pago en USD, asociando configuración de fees
+        del merchant.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePaymentLinkRequest'
+      responses:
+        '201':
+          description: Payment link creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentLinkResponse'
+        '400':
+          description: Parámetros inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /payment-links/{id}:
+    get:
+      tags: [PaymentLinks]
+      summary: Obtener un payment link con fee preview
+      description: >
+        Retorna el payment link, el FX rate actual (con jitter) y el cálculo
+        de fees para mostrar en el checkout (incluyendo incentivos si aplican).
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID del payment link
+          schema:
+            type: string
+        - name: withFeePreview
+          in: query
+          required: false
+          description: >
+            Si es true, calcula en tiempo real la previsualización de fees
+            y el monto en MXN (por defecto true).
+          schema:
+            type: boolean
+            default: true
+      responses:
+        '200':
+          description: Payment link encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentLinkWithPreviewResponse'
+        '404':
+          description: Payment link no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /payment-links/{id}/payments:
+    post:
+      tags: [Payments]
+      summary: Procesar un pago sobre un payment link
+      description: >
+        Procesa un pago usando un card token emitido por el PSP mock (Stripe o Adyen),
+        aplica el FX rate en tiempo real, calcula fees y ejecuta la orquestación síncrona
+        con failover entre PSPs.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID del payment link
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProcessPaymentRequest'
+      responses:
+        '200':
+          description: Pago procesado (exitoso o fallido)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcessPaymentResponse'
+        '400':
+          description: Request inválido (token inválido, monto fuera de límite, etc.)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Payment link no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflicto de idempotencia (pago ya procesado con la misma key)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /webhooks/psp:
+    post:
+      tags: [Webhooks]
+      summary: Webhook de PSP mockeado
+      description: >
+        Endpoint donde los servicios mock de Stripe/Adyen envían callbacks simulados
+        de eventos de pago (payment.succeeded, payment.failed).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PSPWebhookEvent'
+      responses:
+        '200':
+          description: Webhook procesado correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookAckResponse'
+        '400':
+          description: Webhook inválido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /health:
+    get:
+      tags: [Health]
+      summary: Healthcheck del servicio
+      responses:
+        '200':
+          description: Servicio saludable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+components:
+  schemas:
+    Money:
+      type: object
+      properties:
+        currency:
+          type: string
+          example: USD
+        amount:
+          type: number
+          format: double
+          example: 100.0
+
+    CreatePaymentLinkRequest:
+      type: object
+      required:
+        - merchantId
+        - amountUsd
+      properties:
+        merchantId:
+          type: string
+          example: merchant_123
+        amountUsd:
+          type: number
+          format: double
+          minimum: 1
+          maximum: 5000
+          example: 100.0
+        description:
+          type: string
+          example: "Pago de servicio de consultoría"
+        expiresAt:
+          type: string
+          format: date-time
+          description: Fecha opcional de expiración del link
+        feeConfigOverride:
+          description: >
+            Configuración opcional de fees específica para este link.
+            Si se omite, se usa la configuración default del merchant.
+          type: object
+          properties:
+            fixedFeeUsd:
+              type: number
+              format: double
+              example: 0.3
+            variableFeePercent:
+              type: number
+              format: double
+              example: 0.029
+            fxMarkupPercent:
+              type: number
+              format: double
+              example: 0.015
+            firstTxFreeCount:
+              type: integer
+              example: 3
+
+    PaymentLinkResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          example: plink_cu9r2y8s7
+        merchantId:
+          type: string
+          example: merchant_123
+        status:
+          type: string
+          enum: [DRAFT, ACTIVE, EXPIRED, COMPLETED, CANCELLED]
+        amountUsd:
+          type: number
+          format: double
+          example: 100.0
+        description:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        checkoutUrl:
+          type: string
+          example: "https://pay.kira.com/checkout/plink_cu9r2y8s7"
+
+    FeePreview:
+      type: object
+      properties:
+        fxRate:
+          type: number
+          format: double
+          example: 18.5
+        totalFeesUsd:
+          type: number
+          format: double
+          example: 3.2
+        recipientAmountMxn:
+          type: number
+          format: double
+          example: 1850.0
+        breakdown:
+          type: object
+          properties:
+            fixedFeeUsd:
+              type: number
+              format: double
+            variableFeeUsd:
+              type: number
+              format: double
+            fxMarkupUsd:
+              type: number
+              format: double
+            firstTxDiscountUsd:
+              type: number
+              format: double
+
+    PaymentLinkWithPreviewResponse:
+      allOf:
+        - $ref: '#/components/schemas/PaymentLinkResponse'
+        - type: object
+          properties:
+            feePreview:
+              $ref: '#/components/schemas/FeePreview'
+
+    ProcessPaymentRequest:
+      type: object
+      required:
+        - cardToken
+        - pspProvider
+        - idempotencyKey
+      properties:
+        cardToken:
+          type: string
+          example: "tok_mock_stripe_1699564823_a3f7e2"
+        pspProvider:
+          type: string
+          description: PSP preferido para el primer intento.
+          enum: [STRIPE, ADYEN]
+        idempotencyKey:
+          type: string
+          example: "pay_merchant123_2025-11-17T10:15:00Z"
+        metadata:
+          type: object
+          additionalProperties: true
+          example:
+            customerEmail: "user@example.com"
+            customerName: "Juan Pérez"
+
+    ProcessPaymentResponse:
+      type: object
+      properties:
+        transactionId:
+          type: string
+          example: "tx_abc123"
+        status:
+          type: string
+          description: El estado final síncrono de la transacción.
+          enum: [COMPLETED, FAILED]
+        paymentLinkId:
+          type: string
+        pspProvider:
+          type: string
+          description: El PSP que procesó exitosamente o falló finalmente.
+          enum: [STRIPE, ADYEN]
+        amountUsd:
+          type: number
+          format: double
+          example: 103.2
+        recipientAmountMxn:
+          type: number
+          format: double
+          example: 1850.0
+        fxRateApplied:
+          type: number
+          format: double
+          example: 18.5
+        totalFeesUsd:
+          type: number
+          format: double
+          example: 3.2
+
+    PSPWebhookEvent:
+      type: object
+      required:
+        - provider
+        - eventType
+        - data
+      properties:
+        provider:
+          type: string
+          enum: [STRIPE, ADYEN]
+        eventType:
+          type: string
+          example: "payment.succeeded"
+        eventId:
+          type: string
+          example: "evt_test_123"
+        data:
+          type: object
+          additionalProperties: true
+          example:
+            transactionId: "tx_abc123"
+            pspChargeId: "ch_mock_456"
+            status: "succeeded"
+
+    WebhookAckResponse:
+      type: object
+      properties:
+        received:
+          type: boolean
+          example: true
+        processed:
+          type: boolean
+          example: true
+
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "healthy"
+        timestamp:
+          type: string
+          format: date-time
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "Bad Request"
+        message:
+          type: string
+          example: "amountUsd must be between 1 and 5000"
+        code:
+          type: string
+          example: "VALIDATION_ERROR"
