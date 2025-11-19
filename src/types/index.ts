@@ -22,7 +22,7 @@ export interface FXRate {
 // ============================================================================
 
 export interface PSPChargeRequest {
-  amount: number; // En centavos (ej. 10000 = $100.00 USD)
+  amount: number; // In cents (e.g. 10000 = $100.00 USD)
   currency: string;
   token: string;
   idempotencyKey: string;

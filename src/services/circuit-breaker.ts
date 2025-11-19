@@ -3,8 +3,8 @@ import { CircuitBreakerState, CircuitBreakerConfig } from '../types';
 import { config } from '../config';
 
 /**
- * Circuit Breaker simple para PSPs.
- * Previene llamadas repetidas a PSPs que están fallando.
+ * Simple Circuit Breaker for PSPs.
+ * Prevents repeated calls to failing PSPs.
  *
  * @example
  * ```typescript
@@ -13,21 +13,21 @@ import { config } from '../config';
  *
  * const breaker = new CircuitBreaker(PSPProvider.STRIPE);
  *
- * // Verificar si se puede ejecutar
+ * // Check if can execute
  * if (breaker.canExecute()) {
  *   try {
- *     // Ejecutar operación
+ *     // Execute operation
  *     const result = await pspClient.charge(request);
  *     breaker.recordSuccess();
  *   } catch (error) {
  *     breaker.recordFailure();
  *   }
  * } else {
- *   console.log('Circuit breaker está OPEN, no se puede ejecutar');
+ *   console.log('Circuit breaker is OPEN, cannot execute');
  * }
  *
- * // Verificar estado
- * console.log('Estado actual:', breaker.getState());
+ * // Check state
+ * console.log('Current state:', breaker.getState());
  * ```
  */
 export class CircuitBreaker {
@@ -44,9 +44,9 @@ export class CircuitBreaker {
   }
 
   /**
-   * Verifica si se puede ejecutar una llamada al PSP
+   * Checks if a call to the PSP can be executed
    *
-   * @returns true si se puede ejecutar, false si el circuit breaker está OPEN
+   * @returns true if can execute, false if circuit breaker is OPEN
    */
   canExecute(): boolean {
     if (this.state === CircuitBreakerState.CLOSED) {
@@ -54,7 +54,7 @@ export class CircuitBreaker {
     }
 
     if (this.state === CircuitBreakerState.OPEN) {
-      // Verificar si ha pasado suficiente tiempo para intentar de nuevo
+      // Check if enough time has passed to try again
       const now = Date.now();
       if (now - this.lastFailureTime >= this.config.timeout) {
         this.state = CircuitBreakerState.HALF_OPEN;
@@ -63,13 +63,13 @@ export class CircuitBreaker {
       return false;
     }
 
-    // HALF_OPEN: permitir un intento para probar
+    // HALF_OPEN: allow one attempt to test
     return true;
   }
 
   /**
-   * Registra un éxito
-   * Resetea el contador de fallos y cierra el circuit breaker
+   * Records a success
+   * Resets the failure counter and closes the circuit breaker
    */
   recordSuccess(): void {
     this.failureCount = 0;
@@ -77,15 +77,15 @@ export class CircuitBreaker {
   }
 
   /**
-   * Registra un fallo
-   * Incrementa el contador de fallos y abre el circuit breaker si se alcanza el threshold
+   * Records a failure
+   * Increments the failure counter and opens the circuit breaker if threshold is reached
    */
   recordFailure(): void {
     this.failureCount++;
     this.lastFailureTime = Date.now();
 
     if (this.state === CircuitBreakerState.HALF_OPEN) {
-      // Falló en estado HALF_OPEN, volver a OPEN
+      // Failed in HALF_OPEN state, return to OPEN
       this.state = CircuitBreakerState.OPEN;
     } else if (this.failureCount >= this.config.failureThreshold) {
       this.state = CircuitBreakerState.OPEN;
@@ -93,17 +93,17 @@ export class CircuitBreaker {
   }
 
   /**
-   * Obtiene el estado actual
+   * Gets the current state
    *
-   * @returns Estado actual del circuit breaker (CLOSED, OPEN, o HALF_OPEN)
+   * @returns Current circuit breaker state (CLOSED, OPEN, or HALF_OPEN)
    */
   getState(): CircuitBreakerState {
     return this.state;
   }
 
   /**
-   * Resetea el circuit breaker
-   * Vuelve el estado a CLOSED y limpia contadores
+   * Resets the circuit breaker
+   * Returns state to CLOSED and clears counters
    */
   reset(): void {
     this.state = CircuitBreakerState.CLOSED;
@@ -113,21 +113,21 @@ export class CircuitBreaker {
 }
 
 /**
- * Gestor global de circuit breakers para cada PSP
+ * Global circuit breaker manager for each PSP
  *
  * @example
  * ```typescript
  * import { circuitBreakerManager } from './services/circuit-breaker';
  * import { PSPProvider } from '@prisma/client';
  *
- * // Obtener circuit breaker para un PSP específico
+ * // Get circuit breaker for a specific PSP
  * const stripeBreaker = circuitBreakerManager.getBreaker(PSPProvider.STRIPE);
  *
  * if (stripeBreaker.canExecute()) {
- *   // Ejecutar operación...
+ *   // Execute operation...
  * }
  *
- * // Resetear todos los circuit breakers
+ * // Reset all circuit breakers
  * circuitBreakerManager.resetAll();
  * ```
  */

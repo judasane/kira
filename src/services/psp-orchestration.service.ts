@@ -4,7 +4,7 @@ import { getPSPClient } from './psp';
 import { circuitBreakerManager } from './circuit-breaker';
 
 /**
- * Resultado de orquestación con todos los intentos
+ * Orchestration result with all attempts
  */
 export interface OrchestrationResult {
   success: boolean;
@@ -18,8 +18,8 @@ export interface OrchestrationResult {
 }
 
 /**
- * Servicio de orquestación de PSPs con failover automático.
- * Gestiona la lógica de routing primario/secundario y circuit breakers.
+ * PSP orchestration service with automatic failover.
+ * Manages primary/secondary routing logic and circuit breakers.
  *
  * @example
  * ```typescript
@@ -29,7 +29,7 @@ export interface OrchestrationResult {
  * const prisma = new PrismaClient();
  * const orchestration = new PSPOrchestrationService(prisma);
  *
- * // Ejecutar cargo con failover automático
+ * // Execute charge with automatic failover
  * const result = await orchestration.executeCharge(
  *   PSPProvider.STRIPE,
  *   {
@@ -43,11 +43,11 @@ export interface OrchestrationResult {
  * );
  *
  * if (result.success) {
- *   console.log('Cargo exitoso con:', result.finalProvider);
- *   console.log('Intentos realizados:', result.attempts.length);
+ *   console.log('Successful charge with:', result.finalProvider);
+ *   console.log('Attempts made:', result.attempts.length);
  * }
  *
- * // Persistir intentos en BD
+ * // Persist attempts to DB
  * await orchestration.persistAttempts('transaction_id_123', result.attempts);
  * ```
  */
@@ -59,12 +59,12 @@ export class PSPOrchestrationService {
   }
 
   /**
-   * Ejecuta el cargo contra PSPs con lógica de failover.
+   * Executes the charge against PSPs with failover logic.
    *
-   * @param primaryProvider - PSP primario a intentar primero
-   * @param request - Request del cargo
-   * @param transactionId - ID de la transacción (para logging)
-   * @returns Resultado de orquestación con todos los intentos y el provider final
+   * @param primaryProvider - Primary PSP to try first
+   * @param request - Charge request
+   * @param transactionId - Transaction ID (for logging)
+   * @returns Orchestration result with all attempts and the final provider
    */
   async executeCharge(
     primaryProvider: PSPProvider,
@@ -73,10 +73,10 @@ export class PSPOrchestrationService {
   ): Promise<OrchestrationResult> {
     const attempts: OrchestrationResult['attempts'] = [];
 
-    // Determinar PSP secundario
+    // Determine secondary PSP
     const secondaryProvider = this.getSecondaryProvider(primaryProvider);
 
-    // 1. Intentar con PSP primario
+    // 1. Try with primary PSP
     const primaryResult = await this.attemptCharge(
       primaryProvider,
       request,
@@ -89,7 +89,7 @@ export class PSPOrchestrationService {
       response: primaryResult,
     });
 
-    // Si el primario tuvo éxito, retornar inmediatamente
+    // If primary succeeded, return immediately
     if (primaryResult.success) {
       return {
         success: true,
@@ -99,8 +99,8 @@ export class PSPOrchestrationService {
       };
     }
 
-    // Si el primario falló con DECLINED explícito, NO hacer failover
-    // (decline es una decisión de negocio del PSP, no un error técnico)
+    // If primary failed with explicit DECLINED, DO NOT failover
+    // (decline is a business decision by the PSP, not a technical error)
     if (primaryResult.status === PSPAttemptStatus.DECLINED) {
       return {
         success: false,
@@ -110,8 +110,8 @@ export class PSPOrchestrationService {
       };
     }
 
-    // 2. El primario falló por error técnico (TIMEOUT/ERROR)
-    // Intentar failover al PSP secundario
+    // 2. Primary failed due to technical error (TIMEOUT/ERROR)
+    // Attempt failover to secondary PSP
     console.log(
       `[Orchestration] Primary ${primaryProvider} failed with ${primaryResult.status}, attempting failover to ${secondaryProvider}`
     );
@@ -128,7 +128,7 @@ export class PSPOrchestrationService {
       response: secondaryResult,
     });
 
-    // Retornar resultado del secundario
+    // Return secondary result
     return {
       success: secondaryResult.success,
       finalProvider: secondaryResult.success ? secondaryProvider : null,
@@ -138,14 +138,14 @@ export class PSPOrchestrationService {
   }
 
   /**
-   * Intenta ejecutar un cargo contra un PSP específico.
-   * Respeta el circuit breaker del PSP.
+   * Attempts to execute a charge against a specific PSP.
+   * Respects the PSP circuit breaker.
    *
-   * @param provider - PSP a utilizar
-   * @param request - Request del cargo
-   * @param _transactionId - ID de la transacción (para logging)
-   * @param _isPrimary - Si este es el intento primario
-   * @returns Respuesta del PSP
+   * @param provider - PSP to use
+   * @param request - Charge request
+   * @param _transactionId - Transaction ID (for logging)
+   * @param _isPrimary - Whether this is the primary attempt
+   * @returns PSP response
    */
   private async attemptCharge(
     provider: PSPProvider,
@@ -153,7 +153,7 @@ export class PSPOrchestrationService {
     _transactionId: string,
     _isPrimary: boolean
   ): Promise<PSPChargeResponse> {
-    // Verificar circuit breaker
+    // Check circuit breaker
     const breaker = circuitBreakerManager.getBreaker(provider);
 
     if (!breaker.canExecute()) {
@@ -168,14 +168,14 @@ export class PSPOrchestrationService {
       };
     }
 
-    // Obtener cliente PSP
+    // Get PSP client
     const pspClient = getPSPClient(provider);
 
     try {
-      // Ejecutar cargo
+      // Execute charge
       const response = await pspClient.charge(request);
 
-      // Registrar resultado en circuit breaker
+      // Record result in circuit breaker
       if (response.success) {
         breaker.recordSuccess();
       } else if (
@@ -184,11 +184,11 @@ export class PSPOrchestrationService {
       ) {
         breaker.recordFailure();
       }
-      // NOTE: DECLINED no cuenta como fallo de infraestructura
+      // NOTE: DECLINED does not count as infrastructure failure
 
       return response;
     } catch (error) {
-      // Error inesperado
+      // Unexpected error
       console.error(`[Orchestration] Unexpected error calling ${provider}:`, error);
       breaker.recordFailure();
 
@@ -204,20 +204,20 @@ export class PSPOrchestrationService {
   }
 
   /**
-   * Determina el PSP secundario para failover
+   * Determines the secondary PSP for failover
    *
-   * @param primary - PSP primario
-   * @returns PSP secundario (alterna entre STRIPE y ADYEN)
+   * @param primary - Primary PSP
+   * @returns Secondary PSP (alternates between STRIPE and ADYEN)
    */
   private getSecondaryProvider(primary: PSPProvider): PSPProvider {
     return primary === PSPProvider.STRIPE ? PSPProvider.ADYEN : PSPProvider.STRIPE;
   }
 
   /**
-   * Persiste los intentos de PSP en la base de datos
+   * Persists PSP attempts to the database
    *
-   * @param transactionId - ID de la transacción
-   * @param attempts - Array de intentos realizados
+   * @param transactionId - Transaction ID
+   * @param attempts - Array of attempts made
    */
   async persistAttempts(
     transactionId: string,
@@ -236,7 +236,7 @@ export class PSPOrchestrationService {
           pspChargeId: attempt.response.chargeId,
           pspTransactionId: attempt.response.transactionId,
           requestPayload: {
-            amount: 0, // Se puede agregar del request original
+            amount: 0, // Can be added from the original request
           },
           responsePayload: attempt.response.rawResponse || {},
         },

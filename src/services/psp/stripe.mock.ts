@@ -4,16 +4,16 @@ import { BasePSPMock } from './base.psp';
 import { config } from '../../config';
 
 /**
- * Mock de Stripe PSP.
- * Simula la API de Stripe para crear cargos.
+ * Stripe PSP mock.
+ * Simulates the Stripe API for creating charges.
  *
  * @example
  * ```typescript
  * import { stripeMock } from './services/psp/stripe.mock';
  *
- * // Ejecutar un cargo
+ * // Execute a charge
  * const response = await stripeMock.charge({
- *   amount: 10000, // $100.00 en centavos
+ *   amount: 10000, // $100.00 in cents
  *   currency: 'usd',
  *   token: 'tok_visa',
  *   idempotencyKey: 'unique_key_123',
@@ -21,10 +21,10 @@ import { config } from '../../config';
  * });
  *
  * if (response.success) {
- *   console.log('Cargo exitoso:', response.chargeId);
+ *   console.log('Successful charge:', response.chargeId);
  *   console.log('Transaction ID:', response.transactionId);
  * } else {
- *   console.error('Cargo fallido:', response.errorMessage);
+ *   console.error('Failed charge:', response.errorMessage);
  * }
  * ```
  */
@@ -34,10 +34,10 @@ export class StripeMock extends BasePSPMock {
   }
 
   async charge(request: PSPChargeRequest): Promise<PSPChargeResponse> {
-    // Simular latencia de red
+    // Simulate network latency
     const latencyMs = await this.simulateLatency();
 
-    // Validar token
+    // Validate token
     if (!request.token.startsWith('tok_')) {
       return {
         success: false,
@@ -54,7 +54,7 @@ export class StripeMock extends BasePSPMock {
       };
     }
 
-    // Determinar resultado
+    // Determine result
     const willSucceed = this.shouldSucceed();
 
     if (willSucceed) {

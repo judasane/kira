@@ -4,16 +4,16 @@ import { BasePSPMock } from './base.psp';
 import { config } from '../../config';
 
 /**
- * Mock de Adyen PSP.
- * Simula la API de Adyen para crear pagos.
+ * Adyen PSP mock.
+ * Simulates the Adyen API for creating payments.
  *
  * @example
  * ```typescript
  * import { adyenMock } from './services/psp/adyen.mock';
  *
- * // Ejecutar un pago
+ * // Execute a payment
  * const response = await adyenMock.charge({
- *   amount: 10000, // $100.00 en centavos
+ *   amount: 10000, // $100.00 in cents
  *   currency: 'usd',
  *   token: 'tok_visa',
  *   idempotencyKey: 'unique_key_123',
@@ -21,10 +21,10 @@ import { config } from '../../config';
  * });
  *
  * if (response.success) {
- *   console.log('Pago autorizado:', response.chargeId);
+ *   console.log('Payment authorized:', response.chargeId);
  *   console.log('PSP Reference:', response.transactionId);
  * } else {
- *   console.error('Pago rechazado:', response.errorMessage);
+ *   console.error('Payment rejected:', response.errorMessage);
  * }
  * ```
  */
@@ -34,10 +34,10 @@ export class AdyenMock extends BasePSPMock {
   }
 
   async charge(request: PSPChargeRequest): Promise<PSPChargeResponse> {
-    // Simular latencia de red
+    // Simulate network latency
     const latencyMs = await this.simulateLatency();
 
-    // Validar token
+    // Validate token
     if (!request.token.startsWith('tok_')) {
       return {
         success: false,
@@ -54,7 +54,7 @@ export class AdyenMock extends BasePSPMock {
       };
     }
 
-    // Determinar resultado
+    // Determine result
     const willSucceed = this.shouldSucceed();
 
     if (willSucceed) {

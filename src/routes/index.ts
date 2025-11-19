@@ -24,7 +24,7 @@ export function createRouter(prisma: PrismaClient): Router {
   swaggerDocument.servers = [{ url: config.baseUrl }];
   router.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
-  // Inicializar controladores
+  // Initialize controllers
   const paymentLinkController = new PaymentLinkController(prisma);
   const paymentController = new PaymentController(prisma);
   const webhookController = new WebhookController(prisma);

@@ -3,8 +3,8 @@ info:
   title: Kira Payment Link API
   version: 1.0.0
   description: >
-    API para crear enlaces de pago en USD, previsualizar fees y FX,
-    procesar pagos con orquestación de PSP mockeados y manejar webhooks simulados.
+    API to create payment links in USD, preview fees and FX,
+    process payments with mocked PSP orchestration and handle simulated webhooks.
 
 servers:
   - url: https://kira-payment-api.onrender.com
@@ -12,22 +12,22 @@ servers:
 
 tags:
   - name: PaymentLinks
-    description: CRUD y obtención de enlaces de pago
+    description: CRUD and retrieval of payment links
   - name: Payments
-    description: Procesamiento de pagos sobre un payment link
+    description: Payment processing on a payment link
   - name: Webhooks
-    description: Recepción de callbacks de PSP mockeados
+    description: Reception of mocked PSP callbacks
   - name: Health
-    description: Salud del servicio
+    description: Service health
 
 paths:
   /payment-links:
     post:
       tags: [PaymentLinks]
-      summary: Crear un payment link
+      summary: Create a payment link
       description: >
-        Crea un nuevo enlace de pago en USD, asociando configuración de fees
-        del merchant.
+        Creates a new payment link in USD, associating the merchant's
+        fee configuration.
       requestBody:
         required: true
         content:
@@ -36,13 +36,13 @@ paths:
               $ref: '#/components/schemas/CreatePaymentLinkRequest'
       responses:
         '201':
-          description: Payment link creado
+          description: Payment link created
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/PaymentLinkResponse'
         '400':
-          description: Parámetros inválidos
+          description: Invalid parameters
           content:
             application/json:
               schema:
@@ -51,35 +51,35 @@ paths:
   /payment-links/{id}:
     get:
       tags: [PaymentLinks]
-      summary: Obtener un payment link con fee preview
+      summary: Get a payment link with fee preview
       description: >
-        Retorna el payment link, el FX rate actual (con jitter) y el cálculo
-        de fees para mostrar en el checkout (incluyendo incentivos si aplican).
+        Returns the payment link, the current FX rate (with jitter) and the
+        fee calculation to display in the checkout (including incentives if applicable).
       parameters:
         - name: id
           in: path
           required: true
-          description: ID del payment link
+          description: Payment link ID
           schema:
             type: string
         - name: withFeePreview
           in: query
           required: false
           description: >
-            Si es true, calcula en tiempo real la previsualización de fees
-            y el monto en MXN (por defecto true).
+            If true, calculates the fee preview in real time
+            and the amount in MXN (default true).
           schema:
             type: boolean
             default: true
       responses:
         '200':
-          description: Payment link encontrado
+          description: Payment link found
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/PaymentLinkWithPreviewResponse'
         '404':
-          description: Payment link no encontrado
+          description: Payment link not found
           content:
             application/json:
               schema:
@@ -88,16 +88,16 @@ paths:
   /payment-links/{id}/payments:
     post:
       tags: [Payments]
-      summary: Procesar un pago sobre un payment link
+      summary: Process a payment on a payment link
       description: >
-        Procesa un pago usando un card token emitido por el PSP mock (Stripe o Adyen),
-        aplica el FX rate en tiempo real, calcula fees y ejecuta la orquestación síncrona
-        con failover entre PSPs.
+        Processes a payment using a card token issued by the mock PSP (Stripe or Adyen),
+        applies the FX rate in real time, calculates fees and executes synchronous
+        orchestration with failover between PSPs.
       parameters:
         - name: id
           in: path
           required: true
-          description: ID del payment link
+          description: Payment link ID
           schema:
             type: string
       requestBody:
@@ -108,25 +108,25 @@ paths:
               $ref: '#/components/schemas/ProcessPaymentRequest'
       responses:
         '200':
-          description: Pago procesado (exitoso o fallido)
+          description: Payment processed (successful or failed)
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProcessPaymentResponse'
         '400':
-          description: Request inválido (token inválido, monto fuera de límite, etc.)
+          description: Invalid request (invalid token, amount out of limit, etc.)
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
-          description: Payment link no encontrado
+          description: Payment link not found
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '409':
-          description: Conflicto de idempotencia (pago ya procesado con la misma key)
+          description: Idempotency conflict (payment already processed with the same key)
           content:
             application/json:
               schema:
@@ -135,10 +135,10 @@ paths:
   /webhooks/psp:
     post:
       tags: [Webhooks]
-      summary: Webhook de PSP mockeado
+      summary: Mocked PSP webhook
       description: >
-        Endpoint donde los servicios mock de Stripe/Adyen envían callbacks simulados
-        de eventos de pago (payment.succeeded, payment.failed).
+        Endpoint where Stripe/Adyen mock services send simulated callbacks
+        for payment events (payment.succeeded, payment.failed).
       requestBody:
         required: true
         content:
@@ -147,13 +147,13 @@ paths:
               $ref: '#/components/schemas/PSPWebhookEvent'
       responses:
         '200':
-          description: Webhook procesado correctamente
+          description: Webhook processed successfully
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/WebhookAckResponse'
         '400':
-          description: Webhook inválido
+          description: Invalid webhook
           content:
             application/json:
               schema:
@@ -162,10 +162,10 @@ paths:
   /health:
     get:
       tags: [Health]
-      summary: Healthcheck del servicio
+      summary: Service healthcheck
       responses:
         '200':
-          description: Servicio saludable
+          description: Service healthy
           content:
             application/json:
               schema:
@@ -201,15 +201,15 @@ components:
           example: 100.0
         description:
           type: string
-          example: "Pago de servicio de consultoría"
+          example: "Consulting service payment"
         expiresAt:
           type: string
           format: date-time
-          description: Fecha opcional de expiración del link
+          description: Optional link expiration date
         feeConfigOverride:
           description: >
-            Configuración opcional de fees específica para este link.
-            Si se omite, se usa la configuración default del merchant.
+            Optional fee configuration specific to this link.
+            If omitted, the merchant's default configuration is used.
           type: object
           properties:
             fixedFeeUsd:
@@ -311,7 +311,7 @@ components:
           example: "tok_mock_stripe_1699564823_a3f7e2"
         pspProvider:
           type: string
-          description: PSP preferido para el primer intento.
+          description: Preferred PSP for the first attempt.
           enum: [STRIPE, ADYEN]
         idempotencyKey:
           type: string
@@ -321,7 +321,7 @@ components:
           additionalProperties: true
           example:
             customerEmail: "user@example.com"
-            customerName: "Juan Pérez"
+            customerName: "John Doe"
 
     ProcessPaymentResponse:
       type: object
@@ -331,13 +331,13 @@ components:
           example: "tx_abc123"
         status:
           type: string
-          description: El estado final síncrono de la transacción.
+          description: The final synchronous state of the transaction.
           enum: [COMPLETED, FAILED]
         paymentLinkId:
           type: string
         pspProvider:
           type: string
-          description: El PSP que procesó exitosamente o falló finalmente.
+          description: The PSP that successfully processed or finally failed.
           enum: [STRIPE, ADYEN]
         amountUsd:
           type: number

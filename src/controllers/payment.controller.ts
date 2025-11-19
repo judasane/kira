@@ -7,8 +7,8 @@ import { PSPChargeRequest } from '../types';
 import { getFeeConfig } from '../utils/fee-config.utils';
 
 /**
- * Controlador para el procesamiento de pagos.
- * Maneja la ejecución de transacciones sobre payment links con orquestación de PSPs.
+ * Controller for payment processing.
+ * Handles transaction execution on payment links with PSP orchestration.
  *
  * @example
  * ```typescript
@@ -18,7 +18,7 @@ import { getFeeConfig } from '../utils/fee-config.utils';
  * const prisma = new PrismaClient();
  * const controller = new PaymentController(prisma);
  *
- * // Usar en un router de Express
+ * // Use in an Express router
  * router.post('/payment-links/:id/payments', controller.processPayment);
  * ```
  */
@@ -33,11 +33,11 @@ export class PaymentController {
 
   /**
    * POST /payment-links/:id/payments
-   * Procesar un pago sobre un payment link
+   * Process a payment on a payment link
    *
-   * @param req - Request de Express con id en params y ProcessPaymentDTO en body
-   * @param res - Response de Express
-   * @param next - NextFunction para manejo de errores
+   * @param req - Express Request with id in params and ProcessPaymentDTO in body
+   * @param res - Express Response
+   * @param next - NextFunction for error handling
    */
   processPayment = async (
     req: Request<{ id: string }, object, ProcessPaymentDTO>,
@@ -48,19 +48,19 @@ export class PaymentController {
       const { id: paymentLinkId } = req.params;
       const { cardToken, pspProvider, idempotencyKey, metadata } = req.body;
 
-      // 1. Validar idempotencia
+      // 1. Validate idempotency
       const existingTx = await this.prisma.transaction.findUnique({
         where: { idempotencyKey },
       });
 
       if (existingTx) {
-        // Ya existe, retornar la transacción existente
+        // Already exists, return the existing transaction
         const error = new Error('Payment already processed with this idempotency key');
         error.name = 'ConflictError';
         throw error;
       }
 
-      // 2. Obtener y validar el payment link
+      // 2. Get and validate the payment link
       const paymentLink = await this.prisma.paymentLink.findUnique({
         where: { id: paymentLinkId },
         include: {
@@ -81,14 +81,14 @@ export class PaymentController {
         throw error;
       }
 
-      // Validar estado del link
+      // Validate link status
       if (paymentLink.status !== PaymentLinkStatus.ACTIVE) {
         const error = new Error(`Payment link is not active (status: ${paymentLink.status})`);
         error.name = 'BadRequestError';
         throw error;
       }
 
-      // Validar expiración
+      // Validate expiration
       if (paymentLink.expiresAt && paymentLink.expiresAt < new Date()) {
         await this.prisma.paymentLink.update({
           where: { id: paymentLinkId },
@@ -99,10 +99,10 @@ export class PaymentController {
         throw error;
       }
 
-      // 3. Obtener fee config y calcular fees
+      // 3. Get fee config and calculate fees
       const feeConfig = getFeeConfig(paymentLink);
 
-      // Contar transacciones para incentivo
+      // Count transactions for incentive
       const txCount = await this.prisma.transaction.count({
         where: {
           paymentLink: {
@@ -114,14 +114,14 @@ export class PaymentController {
 
       const isFirstTx = txCount < feeConfig.firstTxFreeCount;
 
-      // Calcular fees con FX rate actual
+      // Calculate fees with current FX rate
       const calculation = await feeCalculationService.calculate(
         Number(paymentLink.amountUsd),
         feeConfig,
         isFirstTx
       );
 
-      // 4. Crear transacción en estado PENDING
+      // 4. Create transaction in PENDING status
       const transaction = await this.prisma.transaction.create({
         data: {
           paymentLinkId,
@@ -136,9 +136,9 @@ export class PaymentController {
         },
       });
 
-      // 5. Ejecutar orquestación de PSP
+      // 5. Execute PSP orchestration
       const chargeRequest: PSPChargeRequest = {
-        amount: Math.round(calculation.totalChargeUsd * 100), // En centavos
+        amount: Math.round(calculation.totalChargeUsd * 100), // In cents
         currency: 'usd',
         token: cardToken as string,
         idempotencyKey: idempotencyKey as string,
@@ -151,17 +151,17 @@ export class PaymentController {
         transaction.id
       );
 
-      // 6. Persistir intentos de PSP
+      // 6. Persist PSP attempts
       await this.orchestrationService.persistAttempts(transaction.id, orchestrationResult.attempts);
 
-      // 7. Actualizar transacción según resultado
+      // 7. Update transaction according to result
       let finalStatus: TransactionStatus;
       let failureReason: string | null = null;
 
       if (orchestrationResult.success) {
         finalStatus = TransactionStatus.COMPLETED;
 
-        // Marcar payment link como completado si se desea (one-time use)
+        // Mark payment link as completed if desired (one-time use)
         // await this.prisma.paymentLink.update({
         //   where: { id: paymentLinkId },
         //   data: { status: PaymentLinkStatus.COMPLETED },
@@ -181,7 +181,7 @@ export class PaymentController {
         },
       });
 
-      // 8. Retornar respuesta
+      // 8. Return response
       res.json({
         transactionId: updatedTransaction.id,
         status: updatedTransaction.status,

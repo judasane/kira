@@ -6,7 +6,7 @@ async function main() {
   console.log('🌱 Starting seed...');
   const isProduction = process.env.NODE_ENV === 'production';
 
-  // Limpiar datos existentes (solo en dev)
+  // Clean existing data (only in dev)
   if (!isProduction) {
     await prisma.pSPAttempt.deleteMany();
     await prisma.transaction.deleteMany();
@@ -16,7 +16,7 @@ async function main() {
     console.log('✅ Cleaned existing data');
   }
 
-  // Verificar si ya existen merchants (para idempotencia)
+  // Check if merchants already exist (for idempotency)
   const existingMerchantsCount = await prisma.merchant.count();
 
   if (existingMerchantsCount > 0) {
@@ -24,7 +24,7 @@ async function main() {
     return;
   }
 
-  // Crear merchant inicial (siempre, incluso en producción)
+  // Create initial merchant (always, even in production)
   const merchant1 = await prisma.merchant.create({
     data: {
       id: 'merchant_default',
@@ -35,7 +35,7 @@ async function main() {
 
   console.log('✅ Created default merchant:', merchant1.name);
 
-  // Crear merchant adicional solo en desarrollo
+  // Create additional merchant only in development
   let merchant2 = null;
   if (!isProduction) {
     merchant2 = await prisma.merchant.create({
@@ -48,7 +48,7 @@ async function main() {
     console.log('✅ Created demo merchant:', merchant2.name);
   }
 
-  // Crear fee config por defecto para merchant principal
+  // Create default fee config for main merchant
   const feeConfig1 = await prisma.feeConfig.create({
     data: {
       merchantId: merchant1.id,
@@ -62,7 +62,7 @@ async function main() {
 
   console.log('✅ Created default fee config');
 
-  // Crear fee config adicional solo en desarrollo
+  // Create additional fee config only in development
   if (!isProduction && merchant2) {
     await prisma.feeConfig.create({
       data: {
@@ -77,15 +77,15 @@ async function main() {
     console.log('✅ Created demo fee config');
   }
 
-  // Crear payment links y transacciones de ejemplo solo en desarrollo
+  // Create example payment links and transactions only in development
   if (!isProduction && merchant2) {
     const paymentLink1 = await prisma.paymentLink.create({
       data: {
         merchantId: merchant1.id,
         amountUsd: 100.00,
-        description: 'Pago de servicio de consultoría',
+        description: 'Consulting service payment',
         status: 'ACTIVE',
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 días
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
       },
     });
 
@@ -93,7 +93,7 @@ async function main() {
       data: {
         merchantId: merchant1.id,
         amountUsd: 250.00,
-        description: 'Suscripción Premium - Anual',
+        description: 'Premium Subscription - Annual',
         status: 'ACTIVE',
       },
     });
@@ -102,7 +102,7 @@ async function main() {
       data: {
         merchantId: merchant2.id,
         amountUsd: 1500.00,
-        description: 'Licencia de Software Empresarial',
+        description: 'Enterprise Software License',
         status: 'ACTIVE',
         feeConfigOverride: {
           fixedFeeUsd: 1.00,
@@ -115,7 +115,7 @@ async function main() {
 
     console.log('✅ Created payment links:', paymentLink1.id, paymentLink2.id, paymentLink3.id);
 
-    // Crear una transacción completada de ejemplo
+    // Create example completed transaction
     const transaction1 = await prisma.transaction.create({
       data: {
         paymentLinkId: paymentLink1.id,
@@ -129,12 +129,12 @@ async function main() {
         idempotencyKey: 'seed_tx_1',
         metadata: {
           customerEmail: 'customer@example.com',
-          customerName: 'Juan Pérez',
+          customerName: 'John Doe',
         },
       },
     });
 
-    // Crear PSP attempt para la transacción
+    // Create PSP attempt for the transaction
     await prisma.pSPAttempt.create({
       data: {
         transactionId: transaction1.id,

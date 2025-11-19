@@ -2,8 +2,8 @@ import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 
 /**
- * Controlador para healthcheck del servicio.
- * Verifica el estado del servicio y la conexión a la base de datos.
+ * Controller for service healthcheck.
+ * Verifies the service status and database connection.
  *
  * @example
  * ```typescript
@@ -13,7 +13,7 @@ import { PrismaClient } from '@prisma/client';
  * const prisma = new PrismaClient();
  * const controller = new HealthController(prisma);
  *
- * // Usar en un router de Express
+ * // Use in an Express router
  * router.get('/health', controller.check);
  * ```
  */
@@ -26,14 +26,14 @@ export class HealthController {
 
   /**
    * GET /health
-   * Healthcheck del servicio
+   * Service healthcheck
    *
-   * @param _req - Request de Express (no utilizado)
-   * @param res - Response de Express
+   * @param _req - Express Request (not used)
+   * @param res - Express Response
    */
   check = async (_req: Request, res: Response): Promise<void> => {
     try {
-      // Verificar conexión a la base de datos
+      // Verify database connection
       await this.prisma.$queryRaw`SELECT 1`;
 
       res.json({

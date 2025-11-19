@@ -11,7 +11,7 @@ export function createApp(prisma: PrismaClient): Application {
   const app = express();
 
   // ============================================================================
-  // Middleware básico
+  // Basic middleware
   // ============================================================================
 
   // Security headers
@@ -38,9 +38,9 @@ export function createApp(prisma: PrismaClient): Application {
   // Routes
   // ============================================================================
 
-  // API routes (prefixed with /api según swagger, o sin prefijo)
-  // Según el swagger, las rutas están en /payment-links, /webhooks/psp, etc.
-  // sin el prefijo /api
+  // API routes (prefixed with /api according to swagger, or without prefix)
+  // According to swagger, routes are at /payment-links, /webhooks/psp, etc.
+  // without the /api prefix
   app.use('/', createRouter(prisma));
 
   // ============================================================================

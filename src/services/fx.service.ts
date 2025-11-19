@@ -2,23 +2,23 @@ import { FXRate } from '../types';
 import { config } from '../config';
 
 /**
- * Servicio mock de FX que simula obtener tasas de cambio en tiempo real.
- * Aplica un jitter configurable para simular volatilidad del mercado.
+ * Mock FX service that simulates obtaining real-time exchange rates.
+ * Applies a configurable jitter to simulate market volatility.
  *
  * @example
  * ```typescript
  * import { fxService } from './services/fx.service';
  *
- * // Obtener tasa de cambio actual
+ * // Get current exchange rate
  * const rate = await fxService.getRate('USD', 'MXN');
- * console.log('Tasa USD->MXN:', rate.rate);
+ * console.log('Rate USD->MXN:', rate.rate);
  * console.log('Timestamp:', rate.timestamp);
  *
- * // Aplicar markup a una tasa
+ * // Apply markup to a rate
  * const baseRate = 20.5;
  * const markupPercent = 0.02; // 2%
  * const rateWithMarkup = fxService.applyMarkup(baseRate, markupPercent);
- * console.log('Tasa con markup:', rateWithMarkup); // 20.91
+ * console.log('Rate with markup:', rateWithMarkup); // 20.91
  * ```
  */
 export class FXService {
@@ -31,22 +31,22 @@ export class FXService {
   }
 
   /**
-   * Obtiene la tasa de cambio actual USD -> MXN con jitter aplicado.
-   * Cada llamada puede retornar un valor ligeramente diferente.
+   * Gets the current USD -> MXN exchange rate with jitter applied.
+   * Each call may return a slightly different value.
    *
-   * @param fromCurrency - Moneda origen (por defecto 'USD')
-   * @param toCurrency - Moneda destino (por defecto 'MXN')
-   * @returns Objeto FXRate con la tasa, monedas y timestamp
+   * @param fromCurrency - Source currency (default 'USD')
+   * @param toCurrency - Target currency (default 'MXN')
+   * @returns FXRate object with the rate, currencies and timestamp
    */
   async getRate(fromCurrency: string = 'USD', toCurrency: string = 'MXN'): Promise<FXRate> {
-    // Simular latencia de red
+    // Simulate network latency
     await this.simulateLatency();
 
-    // Aplicar jitter: ±jitterPercent%
+    // Apply jitter: ±jitterPercent%
     const jitter = (Math.random() * 2 - 1) * (this.jitterPercent / 100);
     const rateWithJitter = this.baseRate * (1 + jitter);
 
-    // Redondear a 4 decimales
+    // Round to 4 decimals
     const rate = Math.round(rateWithJitter * 10000) / 10000;
 
     return {
@@ -58,9 +58,9 @@ export class FXService {
   }
 
   /**
-   * Simula latencia de red (50-150ms)
+   * Simulates network latency (50-150ms)
    *
-   * @returns Promise que se resuelve después de la latencia simulada
+   * @returns Promise that resolves after the simulated latency
    */
   private async simulateLatency(): Promise<void> {
     const latency = 50 + Math.random() * 100;
@@ -68,11 +68,11 @@ export class FXService {
   }
 
   /**
-   * Aplica markup al rate base (para cálculo de fees)
+   * Applies markup to the base rate (for fee calculation)
    *
-   * @param rate - Tasa base a la que se aplicará el markup
-   * @param markupPercent - Porcentaje de markup a aplicar (ej: 0.02 para 2%)
-   * @returns Tasa con markup aplicado, redondeada a 4 decimales
+   * @param rate - Base rate to which the markup will be applied
+   * @param markupPercent - Markup percentage to apply (e.g., 0.02 for 2%)
+   * @returns Rate with markup applied, rounded to 4 decimals
    */
   applyMarkup(rate: number, markupPercent: number): number {
     return Math.round(rate * (1 + markupPercent) * 10000) / 10000;
