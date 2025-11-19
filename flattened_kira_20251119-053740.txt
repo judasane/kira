@@ -1,9 +1,9 @@
 ==================================
 FLATTENED: kira
 Type: Submodule
-Generated at: Wed Nov 19 04:16:38 UTC 2025
+Generated at: Wed Nov 19 05:37:40 UTC 2025
 Branch: development
-Commit: b2a92e67dc00b52993112ac645850ec66e4725c8
+Commit: 64129054ea3107e9130048dc742c388be26d8781
 Repository: judasane/kira
 ==================================
 
@@ -360,74 +360,74 @@ temp/
 --- END OF FILE: .prettierrc ---
 
 --- START OF FILE: DEPLOYMENT.md ---
-# Guía de Deployment en Render
+# Deployment Guide on Render
 
-## Prerrequisitos
+## Prerequisites
 
-1. Cuenta en [Render.com](https://render.com)
-2. Repositorio de Git (GitHub, GitLab o Bitbucket)
-3. Código pusheado al repositorio
+1. Account on [Render.com](https://render.com)
+2. Git repository (GitHub, GitLab or Bitbucket)
+3. Code pushed to repository
 
-## Opción 1: Deployment Automático con Blueprint
+## Option 1: Automatic Deployment with Blueprint
 
-### Paso 1: Conectar Repositorio
+### Step 1: Connect Repository
 
-1. Accede a [Render Dashboard](https://dashboard.render.com)
-2. Click en "New +" → "Blueprint"
-3. Conecta tu repositorio de Git
-4. Render detectará automáticamente el archivo `render.yaml`
+1. Access [Render Dashboard](https://dashboard.render.com)
+2. Click on "New +" → "Blueprint"
+3. Connect your Git repository
+4. Render will automatically detect the `render.yaml` file
 
-### Paso 2: Configurar Variables de Entorno
+### Step 2: Configure Environment Variables
 
-Render creará automáticamente:
-- Un servicio PostgreSQL (`kira-payment-db`)
-- Un servicio web (`kira-payment-api`)
+Render will automatically create:
+- A PostgreSQL service (`kira-payment-db`)
+- A web service (`kira-payment-api`)
 
-Las variables de entorno ya están definidas en `render.yaml`, pero verifica:
+Environment variables are already defined in `render.yaml`, but verify:
 
-- `DATABASE_URL`: Se conectará automáticamente a la DB
-- `BASE_URL`: Actualiza con tu URL de Render (ej. `https://kira-payment-api.onrender.com`)
+- `DATABASE_URL`: Will automatically connect to the DB
+- `BASE_URL`: Update with your Render URL (e.g. `https://kira-payment-api.onrender.com`)
 
-### Paso 3: Deploy
+### Step 3: Deploy
 
-1. Click en "Apply"
-2. Render iniciará el build y deployment
-3. Espera a que ambos servicios estén "Live" (círculo verde)
+1. Click on "Apply"
+2. Render will start the build and deployment
+3. Wait for both services to be "Live" (green circle)
 
-### Paso 4: Ejecutar Migraciones y Seed
+### Step 4: Run Migrations and Seed
 
-Las migraciones se ejecutan automáticamente en el comando de inicio.
+Migrations run automatically in the start command.
 
-Para ejecutar el seed manualmente:
+To run seed manually:
 
 ```bash
-# Desde el dashboard de Render, ve a Shell y ejecuta:
+# From Render dashboard, go to Shell and run:
 npm run prisma:seed
 ```
 
-## Opción 2: Deployment Manual
+## Option 2: Manual Deployment
 
-### Paso 1: Crear Base de Datos PostgreSQL
+### Step 1: Create PostgreSQL Database
 
 1. Dashboard → "New +" → "PostgreSQL"
-2. Configura:
+2. Configure:
    - **Name**: `kira-payment-db`
    - **Database**: `kira_payments`
    - **User**: `postgres` (default)
-   - **Region**: Oregon (o tu preferencia)
-   - **Plan**: Starter ($7/month) o Free ($0/month para pruebas)
+   - **Region**: Oregon (or your preference)
+   - **Plan**: Starter ($7/month) or Free ($0/month for testing)
 3. Click "Create Database"
-4. Espera a que esté "Available"
-5. Copia la **Internal Database URL** (la usaremos después)
+4. Wait for it to be "Available"
+5. Copy the **Internal Database URL** (we'll use it later)
 
-### Paso 2: Crear Web Service
+### Step 2: Create Web Service
 
 1. Dashboard → "New +" → "Web Service"
-2. Conecta tu repositorio
-3. Configura:
+2. Connect your repository
+3. Configure:
    - **Name**: `kira-payment-api`
-   - **Region**: Oregon (misma que la DB)
-   - **Branch**: `main` (o tu branch principal)
+   - **Region**: Oregon (same as DB)
+   - **Branch**: `main` (or your main branch)
    - **Runtime**: Node
    - **Build Command**:
      ```bash
@@ -437,16 +437,16 @@ npm run prisma:seed
      ```bash
      npx prisma migrate deploy && npm start
      ```
-   - **Plan**: Starter ($7/month) o Free ($0/month)
+   - **Plan**: Starter ($7/month) or Free ($0/month)
 
-### Paso 3: Configurar Variables de Entorno
+### Step 3: Configure Environment Variables
 
-En la sección "Environment", agrega:
+In the "Environment" section, add:
 
 ```
 NODE_ENV=production
 PORT=10000
-DATABASE_URL=<pega-aqui-la-internal-database-url>
+DATABASE_URL=<paste-internal-database-url-here>
 CORS_ORIGIN=*
 BASE_URL=https://kira-payment-api.onrender.com
 CHECKOUT_BASE_URL=https://pay.kira.com
@@ -460,24 +460,24 @@ CIRCUIT_BREAKER_FAILURE_THRESHOLD=5
 CIRCUIT_BREAKER_TIMEOUT_MS=60000
 ```
 
-**Importante**: Reemplaza `https://kira-payment-api.onrender.com` con la URL real que Render te asigne.
+**Important**: Replace `https://kira-payment-api.onrender.com` with the actual URL that Render assigns you.
 
-### Paso 4: Deploy
+### Step 4: Deploy
 
 1. Click "Create Web Service"
-2. Render comenzará el build automáticamente
-3. Monitorea los logs en la pestaña "Logs"
-4. Espera a que el servicio esté "Live"
+2. Render will start the build automatically
+3. Monitor logs in the "Logs" tab
+4. Wait for the service to be "Live"
 
-### Paso 5: Verificar Deployment
+### Step 5: Verify Deployment
 
-Accede a tu URL y verifica el healthcheck:
+Access your URL and verify the healthcheck:
 
 ```bash
-curl https://tu-app.onrender.com/health
+curl https://your-app.onrender.com/health
 ```
 
-Deberías recibir:
+You should receive:
 
 ```json
 {
@@ -487,121 +487,121 @@ Deberías recibir:
 }
 ```
 
-### Paso 6: Seed de Datos (Opcional)
+### Step 6: Seed Data (Optional)
 
-1. Ve a tu servicio en Render Dashboard
-2. Click en "Shell" (pestaña superior)
-3. Ejecuta:
+1. Go to your service in Render Dashboard
+2. Click on "Shell" (top tab)
+3. Run:
    ```bash
    npm run prisma:seed
    ```
 
-## Configuración Adicional
+## Additional Configuration
 
 ### Health Check
 
-Render verificará automáticamente la ruta `/health` cada 30 segundos.
+Render will automatically check the `/health` route every 30 seconds.
 
 ### Auto-Deploy
 
-Por defecto, Render re-deployará automáticamente cuando hagas push a la rama configurada.
+By default, Render will automatically redeploy when you push to the configured branch.
 
-Para deshabilitar:
+To disable:
 1. Service Settings → "Auto-Deploy"
 2. Toggle OFF
 
 ### Logs
 
-Para ver logs en tiempo real:
+To view logs in real-time:
 ```bash
-# Desde tu terminal local
+# From your local terminal
 curl https://api.render.com/v1/services/<service-id>/logs
 ```
 
-O desde el dashboard: Service → Logs
+Or from the dashboard: Service → Logs
 
-### Escalado
+### Scaling
 
-Para aumentar recursos:
+To increase resources:
 1. Service Settings → "Instance Type"
-2. Selecciona un plan superior
+2. Select a higher plan
 3. Save Changes
 
 ## Troubleshooting
 
 ### Error: "Cannot find module '@prisma/client'"
 
-Solución:
-1. Verifica que el Build Command incluya `npx prisma generate`
-2. Re-deploy manual desde el dashboard
+Solution:
+1. Verify that the Build Command includes `npx prisma generate`
+2. Manual redeploy from dashboard
 
 ### Error: "Database connection failed"
 
-Solución:
-1. Verifica que `DATABASE_URL` esté configurada correctamente
-2. Asegúrate de usar la **Internal Database URL** (no la External)
-3. Verifica que la DB y el servicio estén en la misma región
+Solution:
+1. Verify that `DATABASE_URL` is configured correctly
+2. Make sure to use the **Internal Database URL** (not External)
+3. Verify that DB and service are in the same region
 
 ### Error: "Migrations failed"
 
-Solución:
-1. Ve a Shell en el servicio
-2. Ejecuta manualmente:
+Solution:
+1. Go to Shell in the service
+2. Run manually:
    ```bash
    npx prisma migrate deploy
    ```
 
-### Servicio no inicia
+### Service won't start
 
-Revisa los logs:
+Check the logs:
 1. Service → Logs
-2. Busca errores de TypeScript o dependencias faltantes
+2. Look for TypeScript errors or missing dependencies
 
-## Monitoreo
+## Monitoring
 
-### Métricas Básicas
+### Basic Metrics
 
-Render provee:
+Render provides:
 - CPU usage
 - Memory usage
 - Response times
 - Error rates
 
-Accede desde: Service → Metrics
+Access from: Service → Metrics
 
-### Alertas
+### Alerts
 
-Configura alertas:
+Configure alerts:
 1. Service Settings → "Notifications"
-2. Agrega email o webhook
+2. Add email or webhook
 
-## Costos Estimados
+## Estimated Costs
 
-| Componente | Plan | Costo Mensual |
-|------------|------|---------------|
+| Component | Plan | Monthly Cost |
+|-----------|------|--------------|
 | PostgreSQL | Starter | $7 |
 | Web Service | Starter | $7 |
 | **TOTAL** | | **$14/month** |
 
-**Nota**: Render ofrece planes Free para pruebas, pero tienen limitaciones (servicios duermen después de inactividad).
+**Note**: Render offers Free plans for testing, but they have limitations (services sleep after inactivity).
 
-## Seguridad
+## Security
 
-### Variables de Entorno Sensibles
+### Sensitive Environment Variables
 
-- Nunca hagas commit de `.env`
-- Usa las Environment Variables de Render
-- Rota credenciales regularmente
+- Never commit `.env`
+- Use Render's Environment Variables
+- Rotate credentials regularly
 
 ### HTTPS
 
-Render provee HTTPS automáticamente con certificados Let's Encrypt.
+Render provides HTTPS automatically with Let's Encrypt certificates.
 
 ### Database Backups
 
-Render hace backups automáticos diarios en planes Starter y superiores.
+Render makes automatic daily backups on Starter plans and above.
 
-## Soporte
+## Support
 
 - [Render Docs](https://render.com/docs)
 - [Render Community](https://community.render.com)
@@ -913,65 +913,65 @@ src/
 --- END OF FILE: README.md ---
 
 --- START OF FILE: RENDER_QUICKSTART.md ---
-# Guía Rápida de Deployment en Render
+# Render Deployment Quick Start Guide
 
-## Opción Automática (Blueprint)
+## Automatic Option (Blueprint)
 
-### 1. Preparación
-- Asegúrate de que tu código esté pusheado a GitHub/GitLab
-- Crea una cuenta en render.com
+### 1. Preparation
+- Ensure your code is pushed to GitHub/GitLab
+- Create an account on render.com
 
-### 2. Crear Blueprint
-1. Dashboard de Render → "New +" → "Blueprint"
-2. Conecta tu repositorio
-3. Selecciona el repo "kira"
-4. Render detectará `render.yaml` automáticamente
-5. Click en "Apply"
+### 2. Create Blueprint
+1. Render Dashboard → "New +" → "Blueprint"
+2. Connect your repository
+3. Select the "kira" repo
+4. Render will automatically detect `render.yaml`
+5. Click "Apply"
 
-### 3. Esperar deployment
-- Base de datos PostgreSQL se creará primero (~3 min)
-- Luego el servicio API (~5-7 min)
-- Ambos deben mostrar estado "Live" (círculo verde)
+### 3. Wait for deployment
+- PostgreSQL database will be created first (~3 min)
+- Then the API service (~5-7 min)
+- Both must show "Live" status (green circle)
 
-### 4. Obtener la URL
-- Ve al servicio "kira-payment-api"
-- Copia la URL (ej: https://kira-payment-api.onrender.com)
+### 4. Get the URL
+- Go to the "kira-payment-api" service
+- Copy the URL (e.g., https://kira-payment-api.onrender.com)
 
-### 5. Actualizar variable BASE_URL
-1. En el servicio "kira-payment-api"
-2. Ve a "Environment"
-3. Edita `BASE_URL` con tu URL real
-4. Guarda cambios (esto reiniciará el servicio)
+### 5. Update BASE_URL variable
+1. In the "kira-payment-api" service
+2. Go to "Environment"
+3. Edit `BASE_URL` with your actual URL
+4. Save changes (this will restart the service)
 
-### 6. Verificar
+### 6. Verify
 ```bash
-curl https://TU-URL.onrender.com/health
+curl https://YOUR-URL.onrender.com/health
 ```
 
-### 7. Ejecutar seed (opcional)
-1. Servicio → "Shell"
-2. Ejecutar: `npm run prisma:seed`
+### 7. Run seed (optional)
+1. Service → "Shell"
+2. Run: `npm run prisma:seed`
 
 ---
 
-## Opción Manual
+## Manual Option
 
-### 1. Crear PostgreSQL Database
+### 1. Create PostgreSQL Database
 1. Dashboard → "New +" → "PostgreSQL"
-2. Configurar:
+2. Configure:
    - Name: `kira-payment-db`
    - Database: `kira_payments`
    - Region: Oregon
-   - Plan: Starter ($7/mo) o Free
+   - Plan: Starter ($7/mo) or Free
 3. "Create Database"
-4. Copiar "Internal Database URL"
+4. Copy "Internal Database URL"
 
-### 2. Crear Web Service
+### 2. Create Web Service
 1. Dashboard → "New +" → "Web Service"
-2. Conectar repositorio
-3. Configurar:
+2. Connect repository
+3. Configure:
    - Name: `kira-payment-api`
-   - Region: Oregon (misma que DB)
+   - Region: Oregon (same as DB)
    - Runtime: Node
    - Build Command:
      ```
@@ -982,16 +982,16 @@ curl https://TU-URL.onrender.com/health
      npx prisma migrate deploy && npm start
      ```
 
-### 3. Agregar Variables de Entorno
+### 3. Add Environment Variables
 
-En "Environment" del Web Service, agregar:
+In the Web Service "Environment", add:
 
 ```
 NODE_ENV=production
 PORT=10000
-DATABASE_URL=[pegar Internal Database URL aquí]
+DATABASE_URL=[paste Internal Database URL here]
 CORS_ORIGIN=*
-BASE_URL=https://tu-servicio.onrender.com
+BASE_URL=https://your-service.onrender.com
 CHECKOUT_BASE_URL=https://pay.kira.com
 FX_SERVICE_BASE_RATE=18.5
 FX_SERVICE_JITTER_PERCENT=2.0
@@ -1005,7 +1005,7 @@ CIRCUIT_BREAKER_TIMEOUT_MS=60000
 
 ### 4. Deploy
 1. "Create Web Service"
-2. Esperar a que esté "Live"
+2. Wait until it's "Live"
 
 ---
 
@@ -1013,12 +1013,12 @@ CIRCUIT_BREAKER_TIMEOUT_MS=60000
 
 ### 1. Health Check
 ```bash
-curl https://tu-url.onrender.com/health
+curl https://your-url.onrender.com/health
 ```
 
-### 2. Crear Payment Link
+### 2. Create Payment Link
 ```bash
-curl -X POST https://tu-url.onrender.com/payment-links \
+curl -X POST https://your-url.onrender.com/payment-links \
   -H "Content-Type: application/json" \
   -d '{
     "merchantId": "merchant_123",
@@ -1027,9 +1027,9 @@ curl -X POST https://tu-url.onrender.com/payment-links \
   }'
 ```
 
-### 3. Obtener Payment Link
+### 3. Get Payment Link
 ```bash
-curl https://tu-url.onrender.com/payment-links/[ID-DEL-LINK]
+curl https://your-url.onrender.com/payment-links/[LINK-ID]
 ```
 
 ---
@@ -1037,40 +1037,40 @@ curl https://tu-url.onrender.com/payment-links/[ID-DEL-LINK]
 ## Troubleshooting
 
 ### Error: "Database connection failed"
-- Verifica que uses la **Internal Database URL** (no External)
-- Asegúrate de que DB y API estén en la misma región
+- Verify that you use the **Internal Database URL** (not External)
+- Make sure DB and API are in the same region
 
 ### Error: "Cannot find module '@prisma/client'"
-- Verifica que el Build Command incluya `npx prisma generate`
-- Re-deploy manual desde dashboard
+- Verify that the Build Command includes `npx prisma generate`
+- Manual redeploy from dashboard
 
-### Servicio no inicia
-1. Ve a "Logs" en el dashboard
-2. Busca errores específicos
-3. Verifica que todas las env vars estén configuradas
+### Service won't start
+1. Go to "Logs" in the dashboard
+2. Look for specific errors
+3. Verify that all env vars are configured
 
-### Migraciones fallan
-1. Ve a "Shell"
-2. Ejecuta: `npx prisma migrate deploy`
-
----
-
-## Costos
-
-- PostgreSQL Starter: $7/mes
-- Web Service Starter: $7/mes
-- **Total: $14/mes**
-
-Plan Free disponible para pruebas (limitaciones: sleep después de inactividad)
+### Migrations fail
+1. Go to "Shell"
+2. Run: `npx prisma migrate deploy`
 
 ---
 
-## Próximos pasos
+## Costs
 
-1. Configura auto-deploy en tu rama principal
-2. Agrega custom domain (opcional)
-3. Configura alertas de monitoreo
-4. Implementa frontend Angular
+- PostgreSQL Starter: $7/month
+- Web Service Starter: $7/month
+- **Total: $14/month**
+
+Free plan available for testing (limitations: sleep after inactivity)
+
+---
+
+## Next steps
+
+1. Configure auto-deploy on your main branch
+2. Add custom domain (optional)
+3. Configure monitoring alerts
+4. Implement Angular frontend
 
 --- END OF FILE: RENDER_QUICKSTART.md ---
 
@@ -1398,7 +1398,7 @@ enum PSPAttemptStatus {
 // MODELS
 // ============================================================================
 
-/// Merchants en el sistema (simplificado para este MVP)
+/// Merchants in the system (simplified for this MVP)
 model Merchant {
   id        String   @id @default(cuid())
   name      String
@@ -1406,25 +1406,25 @@ model Merchant {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Relaciones
+  // Relations
   paymentLinks PaymentLink[]
   feeConfigs   FeeConfig[]
 
   @@map("merchants")
 }
 
-/// Configuración de fees por merchant
+/// Fee configuration per merchant
 model FeeConfig {
   id                 String   @id @default(cuid())
   merchantId         String
   merchant           Merchant @relation(fields: [merchantId], references: [id], onDelete: Restrict)
 
-  // Fees (usando Decimal para precisión financiera)
+  // Fees (using Decimal for financial precision)
   fixedFeeUsd        Decimal  @default(0.30) @db.Decimal(10, 2)
   variableFeePercent Decimal  @default(0.029) @db.Decimal(5, 4) // 2.9%
   fxMarkupPercent    Decimal  @default(0.015) @db.Decimal(5, 4) // 1.5%
 
-  // Incentivos
+  // Incentives
   firstTxFreeCount   Int      @default(0)
 
   // Metadata
@@ -1436,31 +1436,31 @@ model FeeConfig {
   @@map("fee_configs")
 }
 
-/// Payment Links creados por merchants
+/// Payment Links created by merchants
 model PaymentLink {
   id          String            @id @default(cuid())
   merchantId  String
   merchant    Merchant          @relation(fields: [merchantId], references: [id], onDelete: Restrict)
 
-  // Información del link
+  // Link information
   status      PaymentLinkStatus @default(ACTIVE)
   amountUsd   Decimal           @db.Decimal(10, 2)
   description String?
 
-  // Expiración
+  // Expiration
   expiresAt   DateTime?
 
-  // Fee config override (JSON para este MVP)
+  // Fee config override (JSON for this MVP)
   feeConfigOverride Json?
 
-  // Metadata adicional
+  // Additional metadata
   metadata    Json?
 
   // Timestamps
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
 
-  // Relaciones
+  // Relations
   transactions Transaction[]
 
   @@index([merchantId])
@@ -1469,41 +1469,41 @@ model PaymentLink {
   @@map("payment_links")
 }
 
-/// Transacciones (intentos de pago sobre un payment link)
+/// Transactions (payment attempts on a payment link)
 model Transaction {
   id              String            @id @default(cuid())
   paymentLinkId   String
   paymentLink     PaymentLink       @relation(fields: [paymentLinkId], references: [id], onDelete: Cascade)
 
-  // Estado
+  // Status
   status          TransactionStatus @default(PENDING)
 
-  // PSP usado finalmente
+  // PSP finally used
   pspProvider     PSPProvider?
 
-  // Montos (usando Decimal para precisión financiera)
+  // Amounts (using Decimal for financial precision)
   amountUsd       Decimal           @db.Decimal(10, 2)
   amountMxn       Decimal?          @db.Decimal(10, 2)
   fxRateApplied   Decimal?          @db.Decimal(10, 4)
   feesTotalUsd    Decimal?          @db.Decimal(10, 2)
 
-  // Idempotencia
+  // Idempotency
   idempotencyKey  String?           @unique
 
-  // Token de tarjeta (mock)
+  // Card token (mock)
   cardToken       String
 
   // Metadata
   metadata        Json?
 
-  // Razón de fallo (si aplica)
+  // Failure reason (if applicable)
   failureReason   String?
 
   // Timestamps
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
 
-  // Relaciones
+  // Relations
   pspAttempts     PSPAttempt[]
 
   @@index([paymentLinkId])
@@ -1512,7 +1512,7 @@ model Transaction {
   @@map("transactions")
 }
 
-/// Intentos de cobro contra PSPs (auditoría completa)
+/// Payment attempts against PSPs (complete audit)
 model PSPAttempt {
   id                  String           @id @default(cuid())
   transactionId       String
@@ -1522,19 +1522,19 @@ model PSPAttempt {
   pspProvider         PSPProvider
   isPrimary           Boolean          @default(true)
 
-  // Request y Response (mock)
+  // Request and Response (mock)
   requestPayload      Json
   responsePayload     Json?
 
-  // Resultado
+  // Result
   status              PSPAttemptStatus
   statusCode          Int?
   errorMessage        String?
 
-  // Métricas
+  // Metrics
   latencyMs           Int?
 
-  // Identificadores del PSP
+  // PSP identifiers
   pspChargeId         String?
   pspTransactionId    String?
 
@@ -1559,7 +1559,7 @@ async function main() {
   console.log('🌱 Starting seed...');
   const isProduction = process.env.NODE_ENV === 'production';
 
-  // Limpiar datos existentes (solo en dev)
+  // Clean existing data (only in dev)
   if (!isProduction) {
     await prisma.pSPAttempt.deleteMany();
     await prisma.transaction.deleteMany();
@@ -1569,7 +1569,7 @@ async function main() {
     console.log('✅ Cleaned existing data');
   }
 
-  // Verificar si ya existen merchants (para idempotencia)
+  // Check if merchants already exist (for idempotency)
   const existingMerchantsCount = await prisma.merchant.count();
 
   if (existingMerchantsCount > 0) {
@@ -1577,7 +1577,7 @@ async function main() {
     return;
   }
 
-  // Crear merchant inicial (siempre, incluso en producción)
+  // Create initial merchant (always, even in production)
   const merchant1 = await prisma.merchant.create({
     data: {
       id: 'merchant_default',
@@ -1588,7 +1588,7 @@ async function main() {
 
   console.log('✅ Created default merchant:', merchant1.name);
 
-  // Crear merchant adicional solo en desarrollo
+  // Create additional merchant only in development
   let merchant2 = null;
   if (!isProduction) {
     merchant2 = await prisma.merchant.create({
@@ -1601,7 +1601,7 @@ async function main() {
     console.log('✅ Created demo merchant:', merchant2.name);
   }
 
-  // Crear fee config por defecto para merchant principal
+  // Create default fee config for main merchant
   const feeConfig1 = await prisma.feeConfig.create({
     data: {
       merchantId: merchant1.id,
@@ -1615,7 +1615,7 @@ async function main() {
 
   console.log('✅ Created default fee config');
 
-  // Crear fee config adicional solo en desarrollo
+  // Create additional fee config only in development
   if (!isProduction && merchant2) {
     await prisma.feeConfig.create({
       data: {
@@ -1630,15 +1630,15 @@ async function main() {
     console.log('✅ Created demo fee config');
   }
 
-  // Crear payment links y transacciones de ejemplo solo en desarrollo
+  // Create example payment links and transactions only in development
   if (!isProduction && merchant2) {
     const paymentLink1 = await prisma.paymentLink.create({
       data: {
         merchantId: merchant1.id,
         amountUsd: 100.00,
-        description: 'Pago de servicio de consultoría',
+        description: 'Consulting service payment',
         status: 'ACTIVE',
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 días
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
       },
     });
 
@@ -1646,7 +1646,7 @@ async function main() {
       data: {
         merchantId: merchant1.id,
         amountUsd: 250.00,
-        description: 'Suscripción Premium - Anual',
+        description: 'Premium Subscription - Annual',
         status: 'ACTIVE',
       },
     });
@@ -1655,7 +1655,7 @@ async function main() {
       data: {
         merchantId: merchant2.id,
         amountUsd: 1500.00,
-        description: 'Licencia de Software Empresarial',
+        description: 'Enterprise Software License',
         status: 'ACTIVE',
         feeConfigOverride: {
           fixedFeeUsd: 1.00,
@@ -1668,7 +1668,7 @@ async function main() {
 
     console.log('✅ Created payment links:', paymentLink1.id, paymentLink2.id, paymentLink3.id);
 
-    // Crear una transacción completada de ejemplo
+    // Create example completed transaction
     const transaction1 = await prisma.transaction.create({
       data: {
         paymentLinkId: paymentLink1.id,
@@ -1682,12 +1682,12 @@ async function main() {
         idempotencyKey: 'seed_tx_1',
         metadata: {
           customerEmail: 'customer@example.com',
-          customerName: 'Juan Pérez',
+          customerName: 'John Doe',
         },
       },
     });
 
-    // Crear PSP attempt para la transacción
+    // Create PSP attempt for the transaction
     await prisma.pSPAttempt.create({
       data: {
         transactionId: transaction1.id,
@@ -1815,7 +1815,7 @@ export function createApp(prisma: PrismaClient): Application {
   const app = express();
 
   // ============================================================================
-  // Middleware básico
+  // Basic middleware
   // ============================================================================
 
   // Security headers
@@ -1842,9 +1842,9 @@ export function createApp(prisma: PrismaClient): Application {
   // Routes
   // ============================================================================
 
-  // API routes (prefixed with /api según swagger, o sin prefijo)
-  // Según el swagger, las rutas están en /payment-links, /webhooks/psp, etc.
-  // sin el prefijo /api
+  // API routes (prefixed with /api according to swagger, or without prefix)
+  // According to swagger, routes are at /payment-links, /webhooks/psp, etc.
+  // without the /api prefix
   app.use('/', createRouter(prisma));
 
   // ============================================================================
@@ -1909,7 +1909,7 @@ export const config = {
   },
 } as const;
 
-// Validación básica
+// Basic validation
 if (!config.databaseUrl && config.nodeEnv === 'production') {
   throw new Error('DATABASE_URL must be defined in production');
 }
@@ -1923,8 +1923,8 @@ import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 
 /**
- * Controlador para healthcheck del servicio.
- * Verifica el estado del servicio y la conexión a la base de datos.
+ * Controller for service healthcheck.
+ * Verifies the service status and database connection.
  *
  * @example
  * ```typescript
@@ -1934,7 +1934,7 @@ import { PrismaClient } from '@prisma/client';
  * const prisma = new PrismaClient();
  * const controller = new HealthController(prisma);
  *
- * // Usar en un router de Express
+ * // Use in an Express router
  * router.get('/health', controller.check);
  * ```
  */
@@ -1947,14 +1947,14 @@ export class HealthController {
 
   /**
    * GET /health
-   * Healthcheck del servicio
+   * Service healthcheck
    *
-   * @param _req - Request de Express (no utilizado)
-   * @param res - Response de Express
+   * @param _req - Express Request (not used)
+   * @param res - Express Response
    */
   check = async (_req: Request, res: Response): Promise<void> => {
     try {
-      // Verificar conexión a la base de datos
+      // Verify database connection
       await this.prisma.$queryRaw`SELECT 1`;
 
       res.json({
@@ -1984,8 +1984,8 @@ import { config } from '../config';
 import { getFeeConfig } from '../utils/fee-config.utils';
 
 /**
- * Controlador para la gestión de payment links.
- * Maneja la creación y consulta de enlaces de pago.
+ * Controller for payment link management.
+ * Handles creation and query of payment links.
  *
  * @example
  * ```typescript
@@ -1995,7 +1995,7 @@ import { getFeeConfig } from '../utils/fee-config.utils';
  * const prisma = new PrismaClient();
  * const controller = new PaymentLinkController(prisma);
  *
- * // Usar en un router de Express
+ * // Use in an Express router
  * router.post('/payment-links', controller.createPaymentLink);
  * router.get('/payment-links/:id', controller.getPaymentLink);
  * ```
@@ -2009,11 +2009,11 @@ export class PaymentLinkController {
 
   /**
    * POST /payment-links
-   * Crear un nuevo payment link
+   * Create a new payment link
    *
-   * @param req - Request de Express con CreatePaymentLinkDTO en el body
-   * @param res - Response de Express
-   * @param next - NextFunction para manejo de errores
+   * @param req - Express Request with CreatePaymentLinkDTO in the body
+   * @param res - Express Response
+   * @param next - NextFunction for error handling
    */
   createPaymentLink = async (
     req: Request<object, object, CreatePaymentLinkDTO>,
@@ -2023,7 +2023,7 @@ export class PaymentLinkController {
     try {
       const { merchantId, amountUsd, description, expiresAt, feeConfigOverride } = req.body;
 
-      // Validar que el merchant existe
+      // Validate that the merchant exists
       const merchant = await this.prisma.merchant.findUnique({
         where: { id: merchantId },
       });
@@ -2034,7 +2034,7 @@ export class PaymentLinkController {
         throw error;
       }
 
-      // Crear el payment link
+      // Create the payment link
       const paymentLink = await this.prisma.paymentLink.create({
         data: {
           merchantId,
@@ -2046,7 +2046,7 @@ export class PaymentLinkController {
         },
       });
 
-      // Construir URL del checkout
+      // Build checkout URL
       const checkoutUrl = `${config.checkoutBaseUrl}/checkout/${paymentLink.id}`;
 
       res.status(201).json({
@@ -2067,11 +2067,11 @@ export class PaymentLinkController {
 
   /**
    * GET /payment-links/:id
-   * Obtener un payment link con preview de fees
+   * Get a payment link with fee preview
    *
-   * @param req - Request de Express con id en params y withFeePreview en query
-   * @param res - Response de Express
-   * @param next - NextFunction para manejo de errores
+   * @param req - Express Request with id in params and withFeePreview in query
+   * @param res - Express Response
+   * @param next - NextFunction for error handling
    */
   getPaymentLink = async (
     req: Request<{ id: string }, object, object, { withFeePreview?: string }>,
@@ -2082,7 +2082,7 @@ export class PaymentLinkController {
       const { id } = req.params;
       const withFeePreview = req.query.withFeePreview !== 'false';
 
-      // Obtener el payment link
+      // Get the payment link
       const paymentLink = await this.prisma.paymentLink.findUnique({
         where: { id },
         include: {
@@ -2103,7 +2103,7 @@ export class PaymentLinkController {
         throw error;
       }
 
-      // Validar que no esté expirado
+      // Validate that it is not expired
       if (paymentLink.expiresAt && paymentLink.expiresAt < new Date()) {
         await this.prisma.paymentLink.update({
           where: { id },
@@ -2112,7 +2112,7 @@ export class PaymentLinkController {
         paymentLink.status = PaymentLinkStatus.EXPIRED;
       }
 
-      // Construir response base
+      // Build base response
       const checkoutUrl = `${config.checkoutBaseUrl}/checkout/${paymentLink.id}`;
       const response: Record<string, unknown> = {
         id: paymentLink.id,
@@ -2126,12 +2126,12 @@ export class PaymentLinkController {
         checkoutUrl,
       };
 
-      // Calcular preview de fees si se solicitó
+      // Calculate fee preview if requested
       if (withFeePreview) {
-        // Obtener fee config (override o default del merchant)
+        // Get fee config (override or merchant default)
         const feeConfig = getFeeConfig(paymentLink);
 
-        // Contar transacciones del merchant para incentivo
+        // Count merchant transactions for incentive
         const txCount = await this.prisma.transaction.count({
           where: {
             paymentLink: {
@@ -2143,7 +2143,7 @@ export class PaymentLinkController {
 
         const isFirstTx = txCount < feeConfig.firstTxFreeCount;
 
-        // Calcular preview
+        // Calculate preview
         const calculation = await feeCalculationService.preview(
           Number(paymentLink.amountUsd),
           feeConfig,
@@ -2182,8 +2182,8 @@ import { PSPChargeRequest } from '../types';
 import { getFeeConfig } from '../utils/fee-config.utils';
 
 /**
- * Controlador para el procesamiento de pagos.
- * Maneja la ejecución de transacciones sobre payment links con orquestación de PSPs.
+ * Controller for payment processing.
+ * Handles transaction execution on payment links with PSP orchestration.
  *
  * @example
  * ```typescript
@@ -2193,7 +2193,7 @@ import { getFeeConfig } from '../utils/fee-config.utils';
  * const prisma = new PrismaClient();
  * const controller = new PaymentController(prisma);
  *
- * // Usar en un router de Express
+ * // Use in an Express router
  * router.post('/payment-links/:id/payments', controller.processPayment);
  * ```
  */
@@ -2208,11 +2208,11 @@ export class PaymentController {
 
   /**
    * POST /payment-links/:id/payments
-   * Procesar un pago sobre un payment link
+   * Process a payment on a payment link
    *
-   * @param req - Request de Express con id en params y ProcessPaymentDTO en body
-   * @param res - Response de Express
-   * @param next - NextFunction para manejo de errores
+   * @param req - Express Request with id in params and ProcessPaymentDTO in body
+   * @param res - Express Response
+   * @param next - NextFunction for error handling
    */
   processPayment = async (
     req: Request<{ id: string }, object, ProcessPaymentDTO>,
@@ -2223,19 +2223,19 @@ export class PaymentController {
       const { id: paymentLinkId } = req.params;
       const { cardToken, pspProvider, idempotencyKey, metadata } = req.body;
 
-      // 1. Validar idempotencia
+      // 1. Validate idempotency
       const existingTx = await this.prisma.transaction.findUnique({
         where: { idempotencyKey },
       });
 
       if (existingTx) {
-        // Ya existe, retornar la transacción existente
+        // Already exists, return the existing transaction
         const error = new Error('Payment already processed with this idempotency key');
         error.name = 'ConflictError';
         throw error;
       }
 
-      // 2. Obtener y validar el payment link
+      // 2. Get and validate the payment link
       const paymentLink = await this.prisma.paymentLink.findUnique({
         where: { id: paymentLinkId },
         include: {
@@ -2256,14 +2256,14 @@ export class PaymentController {
         throw error;
       }
 
-      // Validar estado del link
+      // Validate link status
       if (paymentLink.status !== PaymentLinkStatus.ACTIVE) {
         const error = new Error(`Payment link is not active (status: ${paymentLink.status})`);
         error.name = 'BadRequestError';
         throw error;
       }
 
-      // Validar expiración
+      // Validate expiration
       if (paymentLink.expiresAt && paymentLink.expiresAt < new Date()) {
         await this.prisma.paymentLink.update({
           where: { id: paymentLinkId },
@@ -2274,10 +2274,10 @@ export class PaymentController {
         throw error;
       }
 
-      // 3. Obtener fee config y calcular fees
+      // 3. Get fee config and calculate fees
       const feeConfig = getFeeConfig(paymentLink);
 
-      // Contar transacciones para incentivo
+      // Count transactions for incentive
       const txCount = await this.prisma.transaction.count({
         where: {
           paymentLink: {
@@ -2289,14 +2289,14 @@ export class PaymentController {
 
       const isFirstTx = txCount < feeConfig.firstTxFreeCount;
 
-      // Calcular fees con FX rate actual
+      // Calculate fees with current FX rate
       const calculation = await feeCalculationService.calculate(
         Number(paymentLink.amountUsd),
         feeConfig,
         isFirstTx
       );
 
-      // 4. Crear transacción en estado PENDING
+      // 4. Create transaction in PENDING status
       const transaction = await this.prisma.transaction.create({
         data: {
           paymentLinkId,
@@ -2311,9 +2311,9 @@ export class PaymentController {
         },
       });
 
-      // 5. Ejecutar orquestación de PSP
+      // 5. Execute PSP orchestration
       const chargeRequest: PSPChargeRequest = {
-        amount: Math.round(calculation.totalChargeUsd * 100), // En centavos
+        amount: Math.round(calculation.totalChargeUsd * 100), // In cents
         currency: 'usd',
         token: cardToken as string,
         idempotencyKey: idempotencyKey as string,
@@ -2326,17 +2326,17 @@ export class PaymentController {
         transaction.id
       );
 
-      // 6. Persistir intentos de PSP
+      // 6. Persist PSP attempts
       await this.orchestrationService.persistAttempts(transaction.id, orchestrationResult.attempts);
 
-      // 7. Actualizar transacción según resultado
+      // 7. Update transaction according to result
       let finalStatus: TransactionStatus;
       let failureReason: string | null = null;
 
       if (orchestrationResult.success) {
         finalStatus = TransactionStatus.COMPLETED;
 
-        // Marcar payment link como completado si se desea (one-time use)
+        // Mark payment link as completed if desired (one-time use)
         // await this.prisma.paymentLink.update({
         //   where: { id: paymentLinkId },
         //   data: { status: PaymentLinkStatus.COMPLETED },
@@ -2356,7 +2356,7 @@ export class PaymentController {
         },
       });
 
-      // 8. Retornar respuesta
+      // 8. Return response
       res.json({
         transactionId: updatedTransaction.id,
         status: updatedTransaction.status,
@@ -2381,8 +2381,8 @@ import { PrismaClient, TransactionStatus } from '@prisma/client';
 import { PSPWebhookDTO } from '../validators/payment-link.validator';
 
 /**
- * Controlador para recibir y procesar webhooks de PSPs.
- * Maneja notificaciones asíncronas de estado de transacciones.
+ * Controller for receiving and processing PSP webhooks.
+ * Handles asynchronous transaction status notifications.
  *
  * @example
  * ```typescript
@@ -2392,7 +2392,7 @@ import { PSPWebhookDTO } from '../validators/payment-link.validator';
  * const prisma = new PrismaClient();
  * const controller = new WebhookController(prisma);
  *
- * // Usar en un router de Express
+ * // Use in an Express router
  * router.post('/webhooks/psp', controller.handlePSPWebhook);
  * ```
  */
@@ -2405,11 +2405,11 @@ export class WebhookController {
 
   /**
    * POST /webhooks/psp
-   * Recibe webhooks de PSPs mock
+   * Receives webhooks from mock PSPs
    *
-   * @param req - Request de Express con PSPWebhookDTO en body
-   * @param res - Response de Express
-   * @param next - NextFunction para manejo de errores
+   * @param req - Express Request with PSPWebhookDTO in body
+   * @param res - Express Response
+   * @param next - NextFunction for error handling
    */
   handlePSPWebhook = async (
     req: Request<object, object, PSPWebhookDTO>,
@@ -2421,26 +2421,26 @@ export class WebhookController {
 
       console.log(`[Webhook] Received ${eventType} from ${provider}:`, data);
 
-      // Validar que tengamos un transactionId
+      // Validate that we have a transactionId
       if (!data.transactionId) {
         const error = new Error('Missing transactionId in webhook data');
         error.name = 'BadRequestError';
         throw error;
       }
 
-      // Buscar la transacción
+      // Search for the transaction
       const transaction = await this.prisma.transaction.findUnique({
         where: { id: data.transactionId },
       });
 
       if (!transaction) {
         console.warn(`[Webhook] Transaction ${data.transactionId} not found`);
-        // Responder OK de todas formas (idempotencia)
+        // Respond OK anyway (idempotency)
         res.json({ received: true, processed: false });
         return;
       }
 
-      // Verificar idempotencia: si ya está en estado final, ignorar
+      // Verify idempotency: if already in final state, ignore
       if (
         transaction.status === TransactionStatus.COMPLETED ||
         transaction.status === TransactionStatus.FAILED
@@ -2450,7 +2450,7 @@ export class WebhookController {
         return;
       }
 
-      // Procesar según el tipo de evento
+      // Process according to event type
       let newStatus: TransactionStatus | null = null;
       let failureReason: string | null = null;
 
@@ -2461,7 +2461,7 @@ export class WebhookController {
         failureReason = 'Payment failed (webhook notification)';
       }
 
-      // Actualizar transacción si hay cambio de estado
+      // Update transaction if there is a state change
       if (newStatus) {
         await this.prisma.transaction.update({
           where: { id: transaction.id },
@@ -2488,15 +2488,15 @@ import { PrismaClient } from '@prisma/client';
 import { createApp } from './app';
 import { config } from './config';
 
-// Inicializar Prisma Client
+// Initialize Prisma Client
 const prisma = new PrismaClient({
   log: config.nodeEnv === 'development' ? ['query', 'error', 'warn'] : ['error'],
 });
 
-// Crear aplicación Express
+// Create Express application
 const app = createApp(prisma);
 
-// Iniciar servidor
+// Start server
 const server = app.listen(config.port, () => {
   console.log('');
   console.log('🚀 Kira Payment Backend API');
@@ -2511,7 +2511,7 @@ const server = app.listen(config.port, () => {
   console.log('');
 });
 
-// Manejo de shutdown graceful
+// Graceful shutdown handling
 const gracefulShutdown = async (signal: string) => {
   console.log(`\n${signal} received. Starting graceful shutdown...`);
 
@@ -2525,7 +2525,7 @@ const gracefulShutdown = async (signal: string) => {
     process.exit(0);
   });
 
-  // Forzar shutdown después de 10 segundos
+  // Force shutdown after 10 seconds
   setTimeout(() => {
     console.error('Forcing shutdown after timeout');
     process.exit(1);
@@ -2535,7 +2535,7 @@ const gracefulShutdown = async (signal: string) => {
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
-// Manejo de errores no capturados
+// Uncaught errors handling
 process.on('unhandledRejection', (reason: unknown, promise: Promise<unknown>) => {
   console.error('Unhandled Rejection at:', promise, 'reason:', reason);
 });
@@ -2555,7 +2555,7 @@ import { ZodError } from 'zod';
 import { ApiError } from '../types';
 
 /**
- * Middleware global de manejo de errores
+ * Global error handling middleware
  */
 export function errorHandler(
   error: Error,
@@ -2565,7 +2565,7 @@ export function errorHandler(
 ): void {
   console.error('[Error]', error);
 
-  // Validación con Zod
+  // Zod validation
   if (error instanceof ZodError) {
     const apiError: ApiError = {
       error: 'Validation Error',
@@ -2577,7 +2577,7 @@ export function errorHandler(
     return;
   }
 
-  // Errores de aplicación custom
+  // Custom application errors
   if (error.name === 'NotFoundError') {
     const apiError: ApiError = {
       error: 'Not Found',
@@ -2608,7 +2608,7 @@ export function errorHandler(
     return;
   }
 
-  // Error genérico
+  // Generic error
   const apiError: ApiError = {
     error: 'Internal Server Error',
     message: process.env.NODE_ENV === 'production' ? 'An unexpected error occurred' : error.message,
@@ -2618,7 +2618,7 @@ export function errorHandler(
 }
 
 /**
- * Middleware para rutas no encontradas
+ * Middleware for not found routes
  */
 export function notFoundHandler(req: Request, res: Response): void {
   const apiError: ApiError = {
@@ -2636,7 +2636,7 @@ import { Request, Response, NextFunction } from 'express';
 import { ZodSchema } from 'zod';
 
 /**
- * Middleware para validar request body con Zod
+ * Middleware to validate request body with Zod
  */
 export function validateBody(schema: ZodSchema) {
   return (req: Request, _res: Response, next: NextFunction) => {
@@ -2650,7 +2650,7 @@ export function validateBody(schema: ZodSchema) {
 }
 
 /**
- * Middleware para validar query params con Zod
+ * Middleware to validate query params with Zod
  */
 export function validateQuery(schema: ZodSchema) {
   return (req: Request, _res: Response, next: NextFunction) => {
@@ -2664,7 +2664,7 @@ export function validateQuery(schema: ZodSchema) {
 }
 
 /**
- * Middleware para validar params con Zod
+ * Middleware to validate params with Zod
  */
 export function validateParams(schema: ZodSchema) {
   return (req: Request, _res: Response, next: NextFunction) => {
@@ -2706,7 +2706,7 @@ export function createRouter(prisma: PrismaClient): Router {
   swaggerDocument.servers = [{ url: config.baseUrl }];
   router.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
-  // Inicializar controladores
+  // Initialize controllers
   const paymentLinkController = new PaymentLinkController(prisma);
   const paymentController = new PaymentController(prisma);
   const webhookController = new WebhookController(prisma);
@@ -2757,8 +2757,8 @@ import { CircuitBreakerState, CircuitBreakerConfig } from '../types';
 import { config } from '../config';
 
 /**
- * Circuit Breaker simple para PSPs.
- * Previene llamadas repetidas a PSPs que están fallando.
+ * Simple Circuit Breaker for PSPs.
+ * Prevents repeated calls to failing PSPs.
  *
  * @example
  * ```typescript
@@ -2767,21 +2767,21 @@ import { config } from '../config';
  *
  * const breaker = new CircuitBreaker(PSPProvider.STRIPE);
  *
- * // Verificar si se puede ejecutar
+ * // Check if can execute
  * if (breaker.canExecute()) {
  *   try {
- *     // Ejecutar operación
+ *     // Execute operation
  *     const result = await pspClient.charge(request);
  *     breaker.recordSuccess();
  *   } catch (error) {
  *     breaker.recordFailure();
  *   }
  * } else {
- *   console.log('Circuit breaker está OPEN, no se puede ejecutar');
+ *   console.log('Circuit breaker is OPEN, cannot execute');
  * }
  *
- * // Verificar estado
- * console.log('Estado actual:', breaker.getState());
+ * // Check state
+ * console.log('Current state:', breaker.getState());
  * ```
  */
 export class CircuitBreaker {
@@ -2798,9 +2798,9 @@ export class CircuitBreaker {
   }
 
   /**
-   * Verifica si se puede ejecutar una llamada al PSP
+   * Checks if a call to the PSP can be executed
    *
-   * @returns true si se puede ejecutar, false si el circuit breaker está OPEN
+   * @returns true if can execute, false if circuit breaker is OPEN
    */
   canExecute(): boolean {
     if (this.state === CircuitBreakerState.CLOSED) {
@@ -2808,7 +2808,7 @@ export class CircuitBreaker {
     }
 
     if (this.state === CircuitBreakerState.OPEN) {
-      // Verificar si ha pasado suficiente tiempo para intentar de nuevo
+      // Check if enough time has passed to try again
       const now = Date.now();
       if (now - this.lastFailureTime >= this.config.timeout) {
         this.state = CircuitBreakerState.HALF_OPEN;
@@ -2817,13 +2817,13 @@ export class CircuitBreaker {
       return false;
     }
 
-    // HALF_OPEN: permitir un intento para probar
+    // HALF_OPEN: allow one attempt to test
     return true;
   }
 
   /**
-   * Registra un éxito
-   * Resetea el contador de fallos y cierra el circuit breaker
+   * Records a success
+   * Resets the failure counter and closes the circuit breaker
    */
   recordSuccess(): void {
     this.failureCount = 0;
@@ -2831,15 +2831,15 @@ export class CircuitBreaker {
   }
 
   /**
-   * Registra un fallo
-   * Incrementa el contador de fallos y abre el circuit breaker si se alcanza el threshold
+   * Records a failure
+   * Increments the failure counter and opens the circuit breaker if threshold is reached
    */
   recordFailure(): void {
     this.failureCount++;
     this.lastFailureTime = Date.now();
 
     if (this.state === CircuitBreakerState.HALF_OPEN) {
-      // Falló en estado HALF_OPEN, volver a OPEN
+      // Failed in HALF_OPEN state, return to OPEN
       this.state = CircuitBreakerState.OPEN;
     } else if (this.failureCount >= this.config.failureThreshold) {
       this.state = CircuitBreakerState.OPEN;
@@ -2847,17 +2847,17 @@ export class CircuitBreaker {
   }
 
   /**
-   * Obtiene el estado actual
+   * Gets the current state
    *
-   * @returns Estado actual del circuit breaker (CLOSED, OPEN, o HALF_OPEN)
+   * @returns Current circuit breaker state (CLOSED, OPEN, or HALF_OPEN)
    */
   getState(): CircuitBreakerState {
     return this.state;
   }
 
   /**
-   * Resetea el circuit breaker
-   * Vuelve el estado a CLOSED y limpia contadores
+   * Resets the circuit breaker
+   * Returns state to CLOSED and clears counters
    */
   reset(): void {
     this.state = CircuitBreakerState.CLOSED;
@@ -2867,21 +2867,21 @@ export class CircuitBreaker {
 }
 
 /**
- * Gestor global de circuit breakers para cada PSP
+ * Global circuit breaker manager for each PSP
  *
  * @example
  * ```typescript
  * import { circuitBreakerManager } from './services/circuit-breaker';
  * import { PSPProvider } from '@prisma/client';
  *
- * // Obtener circuit breaker para un PSP específico
+ * // Get circuit breaker for a specific PSP
  * const stripeBreaker = circuitBreakerManager.getBreaker(PSPProvider.STRIPE);
  *
  * if (stripeBreaker.canExecute()) {
- *   // Ejecutar operación...
+ *   // Execute operation...
  * }
  *
- * // Resetear todos los circuit breakers
+ * // Reset all circuit breakers
  * circuitBreakerManager.resetAll();
  * ```
  */
@@ -3022,14 +3022,14 @@ import { FeeConfiguration, FeeBreakdown, FeeCalculationResult } from '../types';
 import { fxService } from './fx.service';
 
 /**
- * Motor de cálculo de fees.
- * Centraliza toda la lógica de comisiones del sistema.
+ * Fee calculation engine.
+ * Centralizes all commission logic in the system.
  *
  * @example
  * ```typescript
  * import { feeCalculationService } from './services/fee-calculation.service';
  *
- * // Calcular fees para una transacción
+ * // Calculate fees for a transaction
  * const feeConfig = {
  *   fixedFeeUsd: 0.30,
  *   variableFeePercent: 0.029, // 2.9%
@@ -3040,25 +3040,25 @@ import { fxService } from './fx.service';
  * const result = await feeCalculationService.calculate(
  *   100.00,      // $100 USD
  *   feeConfig,
- *   true,        // primera transacción
- *   20.5         // tasa FX (opcional)
+ *   true,        // first transaction
+ *   20.5         // FX rate (optional)
  * );
  *
- * console.log('Total a cobrar (USD):', result.totalChargeUsd);
- * console.log('Recipient recibirá (MXN):', result.recipientAmountMxn);
- * console.log('Fees totales:', result.fees.totalFeesUsd);
- * console.log('Desglose:', result.fees);
+ * console.log('Total to charge (USD):', result.totalChargeUsd);
+ * console.log('Recipient will receive (MXN):', result.recipientAmountMxn);
+ * console.log('Total fees:', result.fees.totalFeesUsd);
+ * console.log('Breakdown:', result.fees);
  * ```
  */
 export class FeeCalculationService {
   /**
-   * Calcula los fees totales y el desglose completo para una transacción.
+   * Calculates the total fees and complete breakdown for a transaction.
    *
-   * @param amountUsd - Monto base en USD
-   * @param feeConfig - Configuración de fees del merchant
-   * @param isFirstTransaction - Si es la primera transacción (para aplicar incentivo)
-   * @param fxRate - Tasa FX actual (si no se provee, se obtiene en tiempo real)
-   * @returns Resultado completo del cálculo con desglose de fees y montos
+   * @param amountUsd - Base amount in USD
+   * @param feeConfig - Merchant fee configuration
+   * @param isFirstTransaction - Whether this is the first transaction (to apply incentive)
+   * @param fxRate - Current FX rate (if not provided, obtained in real-time)
+   * @returns Complete calculation result with fee breakdown and amounts
    */
   async calculate(
     amountUsd: number,
@@ -3066,48 +3066,48 @@ export class FeeCalculationService {
     isFirstTransaction: boolean = false,
     fxRate?: number
   ): Promise<FeeCalculationResult> {
-    // 1. Obtener tasa FX si no se provee
+    // 1. Get FX rate if not provided
     if (!fxRate) {
       const fxRateData = await fxService.getRate('USD', 'MXN');
       fxRate = fxRateData.rate;
     }
 
-    // 2. Calcular fees en orden
+    // 2. Calculate fees in order
 
-    // 2a. Fee fija
+    // 2a. Fixed fee
     const fixedFeeUsd = feeConfig.fixedFeeUsd;
 
-    // 2b. Fee variable (sobre el monto base)
+    // 2b. Variable fee (on base amount)
     const variableFeeUsd = amountUsd * feeConfig.variableFeePercent;
 
-    // 2c. Fee de markup FX (sobre el monto base convertido)
+    // 2c. FX markup fee (on converted base amount)
     const amountMxnBase = amountUsd * fxRate;
     const fxMarkupUsd = amountUsd * feeConfig.fxMarkupPercent;
 
-    // 2d. Total de fees antes de incentivos
+    // 2d. Total fees before incentives
     const totalFeesBeforeDiscount = fixedFeeUsd + variableFeeUsd + fxMarkupUsd;
 
-    // 2e. Aplicar incentivo de primera transacción si aplica
+    // 2e. Apply first transaction incentive if applicable
     let firstTxDiscountUsd = 0;
     if (isFirstTransaction && feeConfig.firstTxFreeCount > 0) {
-      // Si es primera transacción y hay incentivo, los fees son 0
+      // If it's the first transaction and there's an incentive, fees are 0
       firstTxDiscountUsd = totalFeesBeforeDiscount;
     }
 
-    // 3. Fees finales
+    // 3. Final fees
     const totalFeesUsd = Math.max(0, totalFeesBeforeDiscount - firstTxDiscountUsd);
 
-    // 4. Aplicar markup a la tasa FX
+    // 4. Apply markup to the FX rate
     const fxRateWithMarkup = fxService.applyMarkup(fxRate, feeConfig.fxMarkupPercent);
 
-    // 5. Monto total a cobrar en USD (base + fees)
+    // 5. Total amount to charge in USD (base + fees)
     const totalChargeUsd = amountUsd + totalFeesUsd;
 
-    // 6. Monto que recibirá el recipient en MXN
-    // Usamos la tasa con markup para el cálculo final
+    // 6. Amount the recipient will receive in MXN
+    // We use the rate with markup for the final calculation
     const recipientAmountMxn = amountUsd * fxRateWithMarkup;
 
-    // 7. Construir resultado
+    // 7. Build result
     const breakdown: FeeBreakdown = {
       fixedFeeUsd: this.roundToTwoDecimals(fixedFeeUsd),
       variableFeeUsd: this.roundToTwoDecimals(variableFeeUsd),
@@ -3128,12 +3128,12 @@ export class FeeCalculationService {
   }
 
   /**
-   * Calcula preview de fees sin modificar estado
+   * Calculates fee preview without modifying state
    *
-   * @param amountUsd - Monto base en USD
-   * @param feeConfig - Configuración de fees del merchant
-   * @param isFirstTransaction - Si es la primera transacción (para aplicar incentivo)
-   * @returns Resultado del cálculo igual que calculate()
+   * @param amountUsd - Base amount in USD
+   * @param feeConfig - Merchant fee configuration
+   * @param isFirstTransaction - Whether this is the first transaction (to apply incentive)
+   * @returns Calculation result same as calculate()
    */
   async preview(
     amountUsd: number,
@@ -3144,20 +3144,20 @@ export class FeeCalculationService {
   }
 
   /**
-   * Redondea a 2 decimales (para montos en USD/MXN)
+   * Rounds to 2 decimals (for USD/MXN amounts)
    *
-   * @param value - Valor a redondear
-   * @returns Valor redondeado a 2 decimales
+   * @param value - Value to round
+   * @returns Value rounded to 2 decimals
    */
   private roundToTwoDecimals(value: number): number {
     return Math.round(value * 100) / 100;
   }
 
   /**
-   * Redondea a 4 decimales (para tasas FX)
+   * Rounds to 4 decimals (for FX rates)
    *
-   * @param value - Valor a redondear
-   * @returns Valor redondeado a 4 decimales
+   * @param value - Value to round
+   * @returns Value rounded to 4 decimals
    */
   private roundToFourDecimals(value: number): number {
     return Math.round(value * 10000) / 10000;
@@ -3174,23 +3174,23 @@ import { FXRate } from '../types';
 import { config } from '../config';
 
 /**
- * Servicio mock de FX que simula obtener tasas de cambio en tiempo real.
- * Aplica un jitter configurable para simular volatilidad del mercado.
+ * Mock FX service that simulates obtaining real-time exchange rates.
+ * Applies a configurable jitter to simulate market volatility.
  *
  * @example
  * ```typescript
  * import { fxService } from './services/fx.service';
  *
- * // Obtener tasa de cambio actual
+ * // Get current exchange rate
  * const rate = await fxService.getRate('USD', 'MXN');
- * console.log('Tasa USD->MXN:', rate.rate);
+ * console.log('Rate USD->MXN:', rate.rate);
  * console.log('Timestamp:', rate.timestamp);
  *
- * // Aplicar markup a una tasa
+ * // Apply markup to a rate
  * const baseRate = 20.5;
  * const markupPercent = 0.02; // 2%
  * const rateWithMarkup = fxService.applyMarkup(baseRate, markupPercent);
- * console.log('Tasa con markup:', rateWithMarkup); // 20.91
+ * console.log('Rate with markup:', rateWithMarkup); // 20.91
  * ```
  */
 export class FXService {
@@ -3203,22 +3203,22 @@ export class FXService {
   }
 
   /**
-   * Obtiene la tasa de cambio actual USD -> MXN con jitter aplicado.
-   * Cada llamada puede retornar un valor ligeramente diferente.
+   * Gets the current USD -> MXN exchange rate with jitter applied.
+   * Each call may return a slightly different value.
    *
-   * @param fromCurrency - Moneda origen (por defecto 'USD')
-   * @param toCurrency - Moneda destino (por defecto 'MXN')
-   * @returns Objeto FXRate con la tasa, monedas y timestamp
+   * @param fromCurrency - Source currency (default 'USD')
+   * @param toCurrency - Target currency (default 'MXN')
+   * @returns FXRate object with the rate, currencies and timestamp
    */
   async getRate(fromCurrency: string = 'USD', toCurrency: string = 'MXN'): Promise<FXRate> {
-    // Simular latencia de red
+    // Simulate network latency
     await this.simulateLatency();
 
-    // Aplicar jitter: ±jitterPercent%
+    // Apply jitter: ±jitterPercent%
     const jitter = (Math.random() * 2 - 1) * (this.jitterPercent / 100);
     const rateWithJitter = this.baseRate * (1 + jitter);
 
-    // Redondear a 4 decimales
+    // Round to 4 decimals
     const rate = Math.round(rateWithJitter * 10000) / 10000;
 
     return {
@@ -3230,9 +3230,9 @@ export class FXService {
   }
 
   /**
-   * Simula latencia de red (50-150ms)
+   * Simulates network latency (50-150ms)
    *
-   * @returns Promise que se resuelve después de la latencia simulada
+   * @returns Promise that resolves after the simulated latency
    */
   private async simulateLatency(): Promise<void> {
     const latency = 50 + Math.random() * 100;
@@ -3240,11 +3240,11 @@ export class FXService {
   }
 
   /**
-   * Aplica markup al rate base (para cálculo de fees)
+   * Applies markup to the base rate (for fee calculation)
    *
-   * @param rate - Tasa base a la que se aplicará el markup
-   * @param markupPercent - Porcentaje de markup a aplicar (ej: 0.02 para 2%)
-   * @returns Tasa con markup aplicado, redondeada a 4 decimales
+   * @param rate - Base rate to which the markup will be applied
+   * @param markupPercent - Markup percentage to apply (e.g., 0.02 for 2%)
+   * @returns Rate with markup applied, rounded to 4 decimals
    */
   applyMarkup(rate: number, markupPercent: number): number {
     return Math.round(rate * (1 + markupPercent) * 10000) / 10000;
@@ -3263,7 +3263,7 @@ import { getPSPClient } from './psp';
 import { circuitBreakerManager } from './circuit-breaker';
 
 /**
- * Resultado de orquestación con todos los intentos
+ * Orchestration result with all attempts
  */
 export interface OrchestrationResult {
   success: boolean;
@@ -3277,8 +3277,8 @@ export interface OrchestrationResult {
 }
 
 /**
- * Servicio de orquestación de PSPs con failover automático.
- * Gestiona la lógica de routing primario/secundario y circuit breakers.
+ * PSP orchestration service with automatic failover.
+ * Manages primary/secondary routing logic and circuit breakers.
  *
  * @example
  * ```typescript
@@ -3288,7 +3288,7 @@ export interface OrchestrationResult {
  * const prisma = new PrismaClient();
  * const orchestration = new PSPOrchestrationService(prisma);
  *
- * // Ejecutar cargo con failover automático
+ * // Execute charge with automatic failover
  * const result = await orchestration.executeCharge(
  *   PSPProvider.STRIPE,
  *   {
@@ -3302,11 +3302,11 @@ export interface OrchestrationResult {
  * );
  *
  * if (result.success) {
- *   console.log('Cargo exitoso con:', result.finalProvider);
- *   console.log('Intentos realizados:', result.attempts.length);
+ *   console.log('Successful charge with:', result.finalProvider);
+ *   console.log('Attempts made:', result.attempts.length);
  * }
  *
- * // Persistir intentos en BD
+ * // Persist attempts to DB
  * await orchestration.persistAttempts('transaction_id_123', result.attempts);
  * ```
  */
@@ -3318,12 +3318,12 @@ export class PSPOrchestrationService {
   }
 
   /**
-   * Ejecuta el cargo contra PSPs con lógica de failover.
+   * Executes the charge against PSPs with failover logic.
    *
-   * @param primaryProvider - PSP primario a intentar primero
-   * @param request - Request del cargo
-   * @param transactionId - ID de la transacción (para logging)
-   * @returns Resultado de orquestación con todos los intentos y el provider final
+   * @param primaryProvider - Primary PSP to try first
+   * @param request - Charge request
+   * @param transactionId - Transaction ID (for logging)
+   * @returns Orchestration result with all attempts and the final provider
    */
   async executeCharge(
     primaryProvider: PSPProvider,
@@ -3332,10 +3332,10 @@ export class PSPOrchestrationService {
   ): Promise<OrchestrationResult> {
     const attempts: OrchestrationResult['attempts'] = [];
 
-    // Determinar PSP secundario
+    // Determine secondary PSP
     const secondaryProvider = this.getSecondaryProvider(primaryProvider);
 
-    // 1. Intentar con PSP primario
+    // 1. Try with primary PSP
     const primaryResult = await this.attemptCharge(
       primaryProvider,
       request,
@@ -3348,7 +3348,7 @@ export class PSPOrchestrationService {
       response: primaryResult,
     });
 
-    // Si el primario tuvo éxito, retornar inmediatamente
+    // If primary succeeded, return immediately
     if (primaryResult.success) {
       return {
         success: true,
@@ -3358,8 +3358,8 @@ export class PSPOrchestrationService {
       };
     }
 
-    // Si el primario falló con DECLINED explícito, NO hacer failover
-    // (decline es una decisión de negocio del PSP, no un error técnico)
+    // If primary failed with explicit DECLINED, DO NOT failover
+    // (decline is a business decision by the PSP, not a technical error)
     if (primaryResult.status === PSPAttemptStatus.DECLINED) {
       return {
         success: false,
@@ -3369,8 +3369,8 @@ export class PSPOrchestrationService {
       };
     }
 
-    // 2. El primario falló por error técnico (TIMEOUT/ERROR)
-    // Intentar failover al PSP secundario
+    // 2. Primary failed due to technical error (TIMEOUT/ERROR)
+    // Attempt failover to secondary PSP
     console.log(
       `[Orchestration] Primary ${primaryProvider} failed with ${primaryResult.status}, attempting failover to ${secondaryProvider}`
     );
@@ -3387,7 +3387,7 @@ export class PSPOrchestrationService {
       response: secondaryResult,
     });
 
-    // Retornar resultado del secundario
+    // Return secondary result
     return {
       success: secondaryResult.success,
       finalProvider: secondaryResult.success ? secondaryProvider : null,
@@ -3397,14 +3397,14 @@ export class PSPOrchestrationService {
   }
 
   /**
-   * Intenta ejecutar un cargo contra un PSP específico.
-   * Respeta el circuit breaker del PSP.
+   * Attempts to execute a charge against a specific PSP.
+   * Respects the PSP circuit breaker.
    *
-   * @param provider - PSP a utilizar
-   * @param request - Request del cargo
-   * @param _transactionId - ID de la transacción (para logging)
-   * @param _isPrimary - Si este es el intento primario
-   * @returns Respuesta del PSP
+   * @param provider - PSP to use
+   * @param request - Charge request
+   * @param _transactionId - Transaction ID (for logging)
+   * @param _isPrimary - Whether this is the primary attempt
+   * @returns PSP response
    */
   private async attemptCharge(
     provider: PSPProvider,
@@ -3412,7 +3412,7 @@ export class PSPOrchestrationService {
     _transactionId: string,
     _isPrimary: boolean
   ): Promise<PSPChargeResponse> {
-    // Verificar circuit breaker
+    // Check circuit breaker
     const breaker = circuitBreakerManager.getBreaker(provider);
 
     if (!breaker.canExecute()) {
@@ -3427,14 +3427,14 @@ export class PSPOrchestrationService {
       };
     }
 
-    // Obtener cliente PSP
+    // Get PSP client
     const pspClient = getPSPClient(provider);
 
     try {
-      // Ejecutar cargo
+      // Execute charge
       const response = await pspClient.charge(request);
 
-      // Registrar resultado en circuit breaker
+      // Record result in circuit breaker
       if (response.success) {
         breaker.recordSuccess();
       } else if (
@@ -3443,11 +3443,11 @@ export class PSPOrchestrationService {
       ) {
         breaker.recordFailure();
       }
-      // NOTE: DECLINED no cuenta como fallo de infraestructura
+      // NOTE: DECLINED does not count as infrastructure failure
 
       return response;
     } catch (error) {
-      // Error inesperado
+      // Unexpected error
       console.error(`[Orchestration] Unexpected error calling ${provider}:`, error);
       breaker.recordFailure();
 
@@ -3463,20 +3463,20 @@ export class PSPOrchestrationService {
   }
 
   /**
-   * Determina el PSP secundario para failover
+   * Determines the secondary PSP for failover
    *
-   * @param primary - PSP primario
-   * @returns PSP secundario (alterna entre STRIPE y ADYEN)
+   * @param primary - Primary PSP
+   * @returns Secondary PSP (alternates between STRIPE and ADYEN)
    */
   private getSecondaryProvider(primary: PSPProvider): PSPProvider {
     return primary === PSPProvider.STRIPE ? PSPProvider.ADYEN : PSPProvider.STRIPE;
   }
 
   /**
-   * Persiste los intentos de PSP en la base de datos
+   * Persists PSP attempts to the database
    *
-   * @param transactionId - ID de la transacción
-   * @param attempts - Array de intentos realizados
+   * @param transactionId - Transaction ID
+   * @param attempts - Array of attempts made
    */
   async persistAttempts(
     transactionId: string,
@@ -3495,7 +3495,7 @@ export class PSPOrchestrationService {
           pspChargeId: attempt.response.chargeId,
           pspTransactionId: attempt.response.transactionId,
           requestPayload: {
-            amount: 0, // Se puede agregar del request original
+            amount: 0, // Can be added from the original request
           },
           responsePayload: attempt.response.rawResponse || {},
         },
@@ -3513,16 +3513,16 @@ import { BasePSPMock } from './base.psp';
 import { config } from '../../config';
 
 /**
- * Mock de Adyen PSP.
- * Simula la API de Adyen para crear pagos.
+ * Adyen PSP mock.
+ * Simulates the Adyen API for creating payments.
  *
  * @example
  * ```typescript
  * import { adyenMock } from './services/psp/adyen.mock';
  *
- * // Ejecutar un pago
+ * // Execute a payment
  * const response = await adyenMock.charge({
- *   amount: 10000, // $100.00 en centavos
+ *   amount: 10000, // $100.00 in cents
  *   currency: 'usd',
  *   token: 'tok_visa',
  *   idempotencyKey: 'unique_key_123',
@@ -3530,10 +3530,10 @@ import { config } from '../../config';
  * });
  *
  * if (response.success) {
- *   console.log('Pago autorizado:', response.chargeId);
+ *   console.log('Payment authorized:', response.chargeId);
  *   console.log('PSP Reference:', response.transactionId);
  * } else {
- *   console.error('Pago rechazado:', response.errorMessage);
+ *   console.error('Payment rejected:', response.errorMessage);
  * }
  * ```
  */
@@ -3543,10 +3543,10 @@ export class AdyenMock extends BasePSPMock {
   }
 
   async charge(request: PSPChargeRequest): Promise<PSPChargeResponse> {
-    // Simular latencia de red
+    // Simulate network latency
     const latencyMs = await this.simulateLatency();
 
-    // Validar token
+    // Validate token
     if (!request.token.startsWith('tok_')) {
       return {
         success: false,
@@ -3563,7 +3563,7 @@ export class AdyenMock extends BasePSPMock {
       };
     }
 
-    // Determinar resultado
+    // Determine result
     const willSucceed = this.shouldSucceed();
 
     if (willSucceed) {
@@ -3631,8 +3631,8 @@ import { PSPChargeRequest, PSPChargeResponse, PSPClient } from '../../types';
 import { config } from '../../config';
 
 /**
- * Clase base abstracta para PSP mocks.
- * Implementa comportamiento común de simulación de latencia y resultados aleatorios.
+ * Abstract base class for PSP mocks.
+ * Implements common behavior for latency simulation and random results.
  *
  * @example
  * ```typescript
@@ -3682,9 +3682,9 @@ export abstract class BasePSPMock implements PSPClient {
   }
 
   /**
-   * Simula latencia de red del PSP
+   * Simulates PSP network latency
    *
-   * @returns Latencia simulada en milisegundos
+   * @returns Simulated latency in milliseconds
    */
   protected async simulateLatency(): Promise<number> {
     const { min, max } = config.psp.latency;
@@ -3694,18 +3694,18 @@ export abstract class BasePSPMock implements PSPClient {
   }
 
   /**
-   * Determina si el cargo será exitoso basado en la tasa de éxito configurada
+   * Determines if the charge will be successful based on the configured success rate
    *
-   * @returns true si el cargo debe ser exitoso, false en caso contrario
+   * @returns true if the charge should succeed, false otherwise
    */
   protected shouldSucceed(): boolean {
     return Math.random() < this.successRate;
   }
 
   /**
-   * Simula diferentes tipos de fallos
+   * Simulates different types of failures
    *
-   * @returns Objeto con detalles del fallo (status, statusCode, errorMessage)
+   * @returns Object with failure details (status, statusCode, errorMessage)
    */
   protected simulateFailure(): { status: PSPAttemptStatus; statusCode: number; errorMessage: string } {
     const failureTypes = [
@@ -3735,9 +3735,9 @@ export abstract class BasePSPMock implements PSPClient {
   }
 
   /**
-   * Genera un ID único para el cargo
+   * Generates a unique ID for the charge
    *
-   * @returns ID único del cargo con formato ch_{provider}_{timestamp}_{random}
+   * @returns Unique charge ID with format ch_{provider}_{timestamp}_{random}
    */
   protected generateChargeId(): string {
     const timestamp = Date.now();
@@ -3746,9 +3746,9 @@ export abstract class BasePSPMock implements PSPClient {
   }
 
   /**
-   * Genera un ID único para la transacción
+   * Generates a unique ID for the transaction
    *
-   * @returns ID único de la transacción con formato tx_{provider}_{timestamp}_{random}
+   * @returns Unique transaction ID with format tx_{provider}_{timestamp}_{random}
    */
   protected generateTransactionId(): string {
     const timestamp = Date.now();
@@ -3766,7 +3766,7 @@ import { stripeMock } from './stripe.mock';
 import { adyenMock } from './adyen.mock';
 
 /**
- * Factory para obtener el cliente PSP correcto según el provider
+ * Factory to get the correct PSP client based on the provider
  */
 export function getPSPClient(provider: PSPProvider): PSPClient {
   switch (provider) {
@@ -3790,16 +3790,16 @@ import { BasePSPMock } from './base.psp';
 import { config } from '../../config';
 
 /**
- * Mock de Stripe PSP.
- * Simula la API de Stripe para crear cargos.
+ * Stripe PSP mock.
+ * Simulates the Stripe API for creating charges.
  *
  * @example
  * ```typescript
  * import { stripeMock } from './services/psp/stripe.mock';
  *
- * // Ejecutar un cargo
+ * // Execute a charge
  * const response = await stripeMock.charge({
- *   amount: 10000, // $100.00 en centavos
+ *   amount: 10000, // $100.00 in cents
  *   currency: 'usd',
  *   token: 'tok_visa',
  *   idempotencyKey: 'unique_key_123',
@@ -3807,10 +3807,10 @@ import { config } from '../../config';
  * });
  *
  * if (response.success) {
- *   console.log('Cargo exitoso:', response.chargeId);
+ *   console.log('Successful charge:', response.chargeId);
  *   console.log('Transaction ID:', response.transactionId);
  * } else {
- *   console.error('Cargo fallido:', response.errorMessage);
+ *   console.error('Failed charge:', response.errorMessage);
  * }
  * ```
  */
@@ -3820,10 +3820,10 @@ export class StripeMock extends BasePSPMock {
   }
 
   async charge(request: PSPChargeRequest): Promise<PSPChargeResponse> {
-    // Simular latencia de red
+    // Simulate network latency
     const latencyMs = await this.simulateLatency();
 
-    // Validar token
+    // Validate token
     if (!request.token.startsWith('tok_')) {
       return {
         success: false,
@@ -3840,7 +3840,7 @@ export class StripeMock extends BasePSPMock {
       };
     }
 
-    // Determinar resultado
+    // Determine result
     const willSucceed = this.shouldSucceed();
 
     if (willSucceed) {
@@ -3921,7 +3921,7 @@ export interface FXRate {
 // ============================================================================
 
 export interface PSPChargeRequest {
-  amount: number; // En centavos (ej. 10000 = $100.00 USD)
+  amount: number; // In cents (e.g. 10000 = $100.00 USD)
   currency: string;
   token: string;
   idempotencyKey: string;
@@ -4010,22 +4010,22 @@ export interface Money {
 import { FeeConfiguration, FeeConfigFromPrisma } from '../types';
 
 /**
- * Extrae la configuración de fees desde un payment link
- * Prioriza el override del link, luego la configuración default del merchant
+ * Extracts the fee configuration from a payment link
+ * Prioritizes the link override, then the merchant's default configuration
  */
 export function getFeeConfig(paymentLink: {
   feeConfigOverride?: unknown | null;
   merchant: { feeConfigs: FeeConfigFromPrisma[] };
 }): FeeConfiguration {
-  // Usar override si existe
+  // Use override if it exists
   if (paymentLink.feeConfigOverride) {
     return paymentLink.feeConfigOverride as FeeConfiguration;
   }
 
-  // Usar configuración default del merchant
+  // Use merchant's default configuration
   const defaultConfig = paymentLink.merchant.feeConfigs[0];
   if (!defaultConfig) {
-    // Fallback a valores por defecto del sistema
+    // Fallback to system default values
     return {
       fixedFeeUsd: 0.30,
       variableFeePercent: 0.029,
@@ -4034,7 +4034,7 @@ export function getFeeConfig(paymentLink: {
     };
   }
 
-  // Convertir Decimal de Prisma a number
+  // Convert Prisma Decimal to number
   return {
     fixedFeeUsd: Number(defaultConfig.fixedFeeUsd),
     variableFeePercent: Number(defaultConfig.variableFeePercent),
@@ -4050,7 +4050,7 @@ import { z } from 'zod';
 import { PSPProvider } from '@prisma/client';
 
 /**
- * Schema para crear un payment link
+ * Schema to create a payment link
  */
 export const createPaymentLinkSchema = z.object({
   merchantId: z.string().min(1, 'merchantId is required'),
@@ -4070,7 +4070,7 @@ export const createPaymentLinkSchema = z.object({
 export type CreatePaymentLinkDTO = z.infer<typeof createPaymentLinkSchema>;
 
 /**
- * Schema para procesar un pago
+ * Schema to process a payment
  */
 export const processPaymentSchema = z.object({
   cardToken: z.string().min(1, 'cardToken is required'),
@@ -4084,7 +4084,7 @@ export const processPaymentSchema = z.object({
 export type ProcessPaymentDTO = z.infer<typeof processPaymentSchema>;
 
 /**
- * Schema para webhook de PSP
+ * Schema for PSP webhook
  */
 export const pspWebhookSchema = z.object({
   provider: z.nativeEnum(PSPProvider),
@@ -4107,8 +4107,8 @@ info:
   title: Kira Payment Link API
   version: 1.0.0
   description: >
-    API para crear enlaces de pago en USD, previsualizar fees y FX,
-    procesar pagos con orquestación de PSP mockeados y manejar webhooks simulados.
+    API to create payment links in USD, preview fees and FX,
+    process payments with mocked PSP orchestration and handle simulated webhooks.
 
 servers:
   - url: https://kira-payment-api.onrender.com
@@ -4116,22 +4116,22 @@ servers:
 
 tags:
   - name: PaymentLinks
-    description: CRUD y obtención de enlaces de pago
+    description: CRUD and retrieval of payment links
   - name: Payments
-    description: Procesamiento de pagos sobre un payment link
+    description: Payment processing on a payment link
   - name: Webhooks
-    description: Recepción de callbacks de PSP mockeados
+    description: Reception of mocked PSP callbacks
   - name: Health
-    description: Salud del servicio
+    description: Service health
 
 paths:
   /payment-links:
     post:
       tags: [PaymentLinks]
-      summary: Crear un payment link
+      summary: Create a payment link
       description: >
-        Crea un nuevo enlace de pago en USD, asociando configuración de fees
-        del merchant.
+        Creates a new payment link in USD, associating the merchant's
+        fee configuration.
       requestBody:
         required: true
         content:
@@ -4140,13 +4140,13 @@ paths:
               $ref: '#/components/schemas/CreatePaymentLinkRequest'
       responses:
         '201':
-          description: Payment link creado
+          description: Payment link created
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/PaymentLinkResponse'
         '400':
-          description: Parámetros inválidos
+          description: Invalid parameters
           content:
             application/json:
               schema:
@@ -4155,35 +4155,35 @@ paths:
   /payment-links/{id}:
     get:
       tags: [PaymentLinks]
-      summary: Obtener un payment link con fee preview
+      summary: Get a payment link with fee preview
       description: >
-        Retorna el payment link, el FX rate actual (con jitter) y el cálculo
-        de fees para mostrar en el checkout (incluyendo incentivos si aplican).
+        Returns the payment link, the current FX rate (with jitter) and the
+        fee calculation to display in the checkout (including incentives if applicable).
       parameters:
         - name: id
           in: path
           required: true
-          description: ID del payment link
+          description: Payment link ID
           schema:
             type: string
         - name: withFeePreview
           in: query
           required: false
           description: >
-            Si es true, calcula en tiempo real la previsualización de fees
-            y el monto en MXN (por defecto true).
+            If true, calculates the fee preview in real time
+            and the amount in MXN (default true).
           schema:
             type: boolean
             default: true
       responses:
         '200':
-          description: Payment link encontrado
+          description: Payment link found
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/PaymentLinkWithPreviewResponse'
         '404':
-          description: Payment link no encontrado
+          description: Payment link not found
           content:
             application/json:
               schema:
@@ -4192,16 +4192,16 @@ paths:
   /payment-links/{id}/payments:
     post:
       tags: [Payments]
-      summary: Procesar un pago sobre un payment link
+      summary: Process a payment on a payment link
       description: >
-        Procesa un pago usando un card token emitido por el PSP mock (Stripe o Adyen),
-        aplica el FX rate en tiempo real, calcula fees y ejecuta la orquestación síncrona
-        con failover entre PSPs.
+        Processes a payment using a card token issued by the mock PSP (Stripe or Adyen),
+        applies the FX rate in real time, calculates fees and executes synchronous
+        orchestration with failover between PSPs.
       parameters:
         - name: id
           in: path
           required: true
-          description: ID del payment link
+          description: Payment link ID
           schema:
             type: string
       requestBody:
@@ -4212,25 +4212,25 @@ paths:
               $ref: '#/components/schemas/ProcessPaymentRequest'
       responses:
         '200':
-          description: Pago procesado (exitoso o fallido)
+          description: Payment processed (successful or failed)
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProcessPaymentResponse'
         '400':
-          description: Request inválido (token inválido, monto fuera de límite, etc.)
+          description: Invalid request (invalid token, amount out of limit, etc.)
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
-          description: Payment link no encontrado
+          description: Payment link not found
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '409':
-          description: Conflicto de idempotencia (pago ya procesado con la misma key)
+          description: Idempotency conflict (payment already processed with the same key)
           content:
             application/json:
               schema:
@@ -4239,10 +4239,10 @@ paths:
   /webhooks/psp:
     post:
       tags: [Webhooks]
-      summary: Webhook de PSP mockeado
+      summary: Mocked PSP webhook
       description: >
-        Endpoint donde los servicios mock de Stripe/Adyen envían callbacks simulados
-        de eventos de pago (payment.succeeded, payment.failed).
+        Endpoint where Stripe/Adyen mock services send simulated callbacks
+        for payment events (payment.succeeded, payment.failed).
       requestBody:
         required: true
         content:
@@ -4251,13 +4251,13 @@ paths:
               $ref: '#/components/schemas/PSPWebhookEvent'
       responses:
         '200':
-          description: Webhook procesado correctamente
+          description: Webhook processed successfully
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/WebhookAckResponse'
         '400':
-          description: Webhook inválido
+          description: Invalid webhook
           content:
             application/json:
               schema:
@@ -4266,10 +4266,10 @@ paths:
   /health:
     get:
       tags: [Health]
-      summary: Healthcheck del servicio
+      summary: Service healthcheck
       responses:
         '200':
-          description: Servicio saludable
+          description: Service healthy
           content:
             application/json:
               schema:
@@ -4305,15 +4305,15 @@ components:
           example: 100.0
         description:
           type: string
-          example: "Pago de servicio de consultoría"
+          example: "Consulting service payment"
         expiresAt:
           type: string
           format: date-time
-          description: Fecha opcional de expiración del link
+          description: Optional link expiration date
         feeConfigOverride:
           description: >
-            Configuración opcional de fees específica para este link.
-            Si se omite, se usa la configuración default del merchant.
+            Optional fee configuration specific to this link.
+            If omitted, the merchant's default configuration is used.
           type: object
           properties:
             fixedFeeUsd:
@@ -4415,7 +4415,7 @@ components:
           example: "tok_mock_stripe_1699564823_a3f7e2"
         pspProvider:
           type: string
-          description: PSP preferido para el primer intento.
+          description: Preferred PSP for the first attempt.
           enum: [STRIPE, ADYEN]
         idempotencyKey:
           type: string
@@ -4425,7 +4425,7 @@ components:
           additionalProperties: true
           example:
             customerEmail: "user@example.com"
-            customerName: "Juan Pérez"
+            customerName: "John Doe"
 
     ProcessPaymentResponse:
       type: object
@@ -4435,13 +4435,13 @@ components:
           example: "tx_abc123"
         status:
           type: string
-          description: El estado final síncrono de la transacción.
+          description: The final synchronous state of the transaction.
           enum: [COMPLETED, FAILED]
         paymentLinkId:
           type: string
         pspProvider:
           type: string
-          description: El PSP que procesó exitosamente o falló finalmente.
+          description: The PSP that successfully processed or finally failed.
           enum: [STRIPE, ADYEN]
         amountUsd:
           type: number
