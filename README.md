@@ -210,8 +210,6 @@ If you are running in a cloud development environment (like Firebase Studio or G
 
 This interface provides a much more convenient way to understand and interact with the API compared to using manual `curl` commands.
 
----
-
 ## Roadmap and Future Improvements
 
 If this project were to continue towards production, these would be the immediate priorities:
@@ -238,24 +236,3 @@ src/
 ├── middleware/         # Error handling and Validation
 └── index.ts            # Entry point
 ```
-
----
-
-## Contributing
-
-This project was built as part of the **Kira Product Engineer Assessment**.
-
-For development:
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'feat: add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-
-<div align="center">
-
-**Made with love for Kira**
-
-</div>
