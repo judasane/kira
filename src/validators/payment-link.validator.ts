@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { PSPProvider } from '@prisma/client';
 
 /**
- * Schema para crear un payment link
+ * Schema to create a payment link
  */
 export const createPaymentLinkSchema = z.object({
   merchantId: z.string().min(1, 'merchantId is required'),
@@ -22,7 +22,7 @@ export const createPaymentLinkSchema = z.object({
 export type CreatePaymentLinkDTO = z.infer<typeof createPaymentLinkSchema>;
 
 /**
- * Schema para procesar un pago
+ * Schema to process a payment
  */
 export const processPaymentSchema = z.object({
   cardToken: z.string().min(1, 'cardToken is required'),
@@ -36,7 +36,7 @@ export const processPaymentSchema = z.object({
 export type ProcessPaymentDTO = z.infer<typeof processPaymentSchema>;
 
 /**
- * Schema para webhook de PSP
+ * Schema for PSP webhook
  */
 export const pspWebhookSchema = z.object({
   provider: z.nativeEnum(PSPProvider),

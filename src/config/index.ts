@@ -44,7 +44,7 @@ export const config = {
   },
 } as const;
 
-// Validación básica
+// Basic validation
 if (!config.databaseUrl && config.nodeEnv === 'production') {
   throw new Error('DATABASE_URL must be defined in production');
 }

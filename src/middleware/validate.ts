@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { ZodSchema } from 'zod';
 
 /**
- * Middleware para validar request body con Zod
+ * Middleware to validate request body with Zod
  */
 export function validateBody(schema: ZodSchema) {
   return (req: Request, _res: Response, next: NextFunction) => {
@@ -16,7 +16,7 @@ export function validateBody(schema: ZodSchema) {
 }
 
 /**
- * Middleware para validar query params con Zod
+ * Middleware to validate query params with Zod
  */
 export function validateQuery(schema: ZodSchema) {
   return (req: Request, _res: Response, next: NextFunction) => {
@@ -30,7 +30,7 @@ export function validateQuery(schema: ZodSchema) {
 }
 
 /**
- * Middleware para validar params con Zod
+ * Middleware to validate params with Zod
  */
 export function validateParams(schema: ZodSchema) {
   return (req: Request, _res: Response, next: NextFunction) => {

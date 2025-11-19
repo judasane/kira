@@ -2,14 +2,14 @@ import { FeeConfiguration, FeeBreakdown, FeeCalculationResult } from '../types';
 import { fxService } from './fx.service';
 
 /**
- * Motor de cálculo de fees.
- * Centraliza toda la lógica de comisiones del sistema.
+ * Fee calculation engine.
+ * Centralizes all commission logic in the system.
  *
  * @example
  * ```typescript
  * import { feeCalculationService } from './services/fee-calculation.service';
  *
- * // Calcular fees para una transacción
+ * // Calculate fees for a transaction
  * const feeConfig = {
  *   fixedFeeUsd: 0.30,
  *   variableFeePercent: 0.029, // 2.9%
@@ -20,25 +20,25 @@ import { fxService } from './fx.service';
  * const result = await feeCalculationService.calculate(
  *   100.00,      // $100 USD
  *   feeConfig,
- *   true,        // primera transacción
- *   20.5         // tasa FX (opcional)
+ *   true,        // first transaction
+ *   20.5         // FX rate (optional)
  * );
  *
- * console.log('Total a cobrar (USD):', result.totalChargeUsd);
- * console.log('Recipient recibirá (MXN):', result.recipientAmountMxn);
- * console.log('Fees totales:', result.fees.totalFeesUsd);
- * console.log('Desglose:', result.fees);
+ * console.log('Total to charge (USD):', result.totalChargeUsd);
+ * console.log('Recipient will receive (MXN):', result.recipientAmountMxn);
+ * console.log('Total fees:', result.fees.totalFeesUsd);
+ * console.log('Breakdown:', result.fees);
  * ```
  */
 export class FeeCalculationService {
   /**
-   * Calcula los fees totales y el desglose completo para una transacción.
+   * Calculates the total fees and complete breakdown for a transaction.
    *
-   * @param amountUsd - Monto base en USD
-   * @param feeConfig - Configuración de fees del merchant
-   * @param isFirstTransaction - Si es la primera transacción (para aplicar incentivo)
-   * @param fxRate - Tasa FX actual (si no se provee, se obtiene en tiempo real)
-   * @returns Resultado completo del cálculo con desglose de fees y montos
+   * @param amountUsd - Base amount in USD
+   * @param feeConfig - Merchant fee configuration
+   * @param isFirstTransaction - Whether this is the first transaction (to apply incentive)
+   * @param fxRate - Current FX rate (if not provided, obtained in real-time)
+   * @returns Complete calculation result with fee breakdown and amounts
    */
   async calculate(
     amountUsd: number,
@@ -46,48 +46,48 @@ export class FeeCalculationService {
     isFirstTransaction: boolean = false,
     fxRate?: number
   ): Promise<FeeCalculationResult> {
-    // 1. Obtener tasa FX si no se provee
+    // 1. Get FX rate if not provided
     if (!fxRate) {
       const fxRateData = await fxService.getRate('USD', 'MXN');
       fxRate = fxRateData.rate;
     }
 
-    // 2. Calcular fees en orden
+    // 2. Calculate fees in order
 
-    // 2a. Fee fija
+    // 2a. Fixed fee
     const fixedFeeUsd = feeConfig.fixedFeeUsd;
 
-    // 2b. Fee variable (sobre el monto base)
+    // 2b. Variable fee (on base amount)
     const variableFeeUsd = amountUsd * feeConfig.variableFeePercent;
 
-    // 2c. Fee de markup FX (sobre el monto base convertido)
+    // 2c. FX markup fee (on converted base amount)
     const amountMxnBase = amountUsd * fxRate;
     const fxMarkupUsd = amountUsd * feeConfig.fxMarkupPercent;
 
-    // 2d. Total de fees antes de incentivos
+    // 2d. Total fees before incentives
     const totalFeesBeforeDiscount = fixedFeeUsd + variableFeeUsd + fxMarkupUsd;
 
-    // 2e. Aplicar incentivo de primera transacción si aplica
+    // 2e. Apply first transaction incentive if applicable
     let firstTxDiscountUsd = 0;
     if (isFirstTransaction && feeConfig.firstTxFreeCount > 0) {
-      // Si es primera transacción y hay incentivo, los fees son 0
+      // If it's the first transaction and there's an incentive, fees are 0
       firstTxDiscountUsd = totalFeesBeforeDiscount;
     }
 
-    // 3. Fees finales
+    // 3. Final fees
     const totalFeesUsd = Math.max(0, totalFeesBeforeDiscount - firstTxDiscountUsd);
 
-    // 4. Aplicar markup a la tasa FX
+    // 4. Apply markup to the FX rate
     const fxRateWithMarkup = fxService.applyMarkup(fxRate, feeConfig.fxMarkupPercent);
 
-    // 5. Monto total a cobrar en USD (base + fees)
+    // 5. Total amount to charge in USD (base + fees)
     const totalChargeUsd = amountUsd + totalFeesUsd;
 
-    // 6. Monto que recibirá el recipient en MXN
-    // Usamos la tasa con markup para el cálculo final
+    // 6. Amount the recipient will receive in MXN
+    // We use the rate with markup for the final calculation
     const recipientAmountMxn = amountUsd * fxRateWithMarkup;
 
-    // 7. Construir resultado
+    // 7. Build result
     const breakdown: FeeBreakdown = {
       fixedFeeUsd: this.roundToTwoDecimals(fixedFeeUsd),
       variableFeeUsd: this.roundToTwoDecimals(variableFeeUsd),
@@ -108,12 +108,12 @@ export class FeeCalculationService {
   }
 
   /**
-   * Calcula preview de fees sin modificar estado
+   * Calculates fee preview without modifying state
    *
-   * @param amountUsd - Monto base en USD
-   * @param feeConfig - Configuración de fees del merchant
-   * @param isFirstTransaction - Si es la primera transacción (para aplicar incentivo)
-   * @returns Resultado del cálculo igual que calculate()
+   * @param amountUsd - Base amount in USD
+   * @param feeConfig - Merchant fee configuration
+   * @param isFirstTransaction - Whether this is the first transaction (to apply incentive)
+   * @returns Calculation result same as calculate()
    */
   async preview(
     amountUsd: number,
@@ -124,20 +124,20 @@ export class FeeCalculationService {
   }
 
   /**
-   * Redondea a 2 decimales (para montos en USD/MXN)
+   * Rounds to 2 decimals (for USD/MXN amounts)
    *
-   * @param value - Valor a redondear
-   * @returns Valor redondeado a 2 decimales
+   * @param value - Value to round
+   * @returns Value rounded to 2 decimals
    */
   private roundToTwoDecimals(value: number): number {
     return Math.round(value * 100) / 100;
   }
 
   /**
-   * Redondea a 4 decimales (para tasas FX)
+   * Rounds to 4 decimals (for FX rates)
    *
-   * @param value - Valor a redondear
-   * @returns Valor redondeado a 4 decimales
+   * @param value - Value to round
+   * @returns Value rounded to 4 decimals
    */
   private roundToFourDecimals(value: number): number {
     return Math.round(value * 10000) / 10000;

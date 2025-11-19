@@ -3,8 +3,8 @@ import { PSPChargeRequest, PSPChargeResponse, PSPClient } from '../../types';
 import { config } from '../../config';
 
 /**
- * Clase base abstracta para PSP mocks.
- * Implementa comportamiento común de simulación de latencia y resultados aleatorios.
+ * Abstract base class for PSP mocks.
+ * Implements common behavior for latency simulation and random results.
  *
  * @example
  * ```typescript
@@ -54,9 +54,9 @@ export abstract class BasePSPMock implements PSPClient {
   }
 
   /**
-   * Simula latencia de red del PSP
+   * Simulates PSP network latency
    *
-   * @returns Latencia simulada en milisegundos
+   * @returns Simulated latency in milliseconds
    */
   protected async simulateLatency(): Promise<number> {
     const { min, max } = config.psp.latency;
@@ -66,18 +66,18 @@ export abstract class BasePSPMock implements PSPClient {
   }
 
   /**
-   * Determina si el cargo será exitoso basado en la tasa de éxito configurada
+   * Determines if the charge will be successful based on the configured success rate
    *
-   * @returns true si el cargo debe ser exitoso, false en caso contrario
+   * @returns true if the charge should succeed, false otherwise
    */
   protected shouldSucceed(): boolean {
     return Math.random() < this.successRate;
   }
 
   /**
-   * Simula diferentes tipos de fallos
+   * Simulates different types of failures
    *
-   * @returns Objeto con detalles del fallo (status, statusCode, errorMessage)
+   * @returns Object with failure details (status, statusCode, errorMessage)
    */
   protected simulateFailure(): { status: PSPAttemptStatus; statusCode: number; errorMessage: string } {
     const failureTypes = [
@@ -107,9 +107,9 @@ export abstract class BasePSPMock implements PSPClient {
   }
 
   /**
-   * Genera un ID único para el cargo
+   * Generates a unique ID for the charge
    *
-   * @returns ID único del cargo con formato ch_{provider}_{timestamp}_{random}
+   * @returns Unique charge ID with format ch_{provider}_{timestamp}_{random}
    */
   protected generateChargeId(): string {
     const timestamp = Date.now();
@@ -118,9 +118,9 @@ export abstract class BasePSPMock implements PSPClient {
   }
 
   /**
-   * Genera un ID único para la transacción
+   * Generates a unique ID for the transaction
    *
-   * @returns ID único de la transacción con formato tx_{provider}_{timestamp}_{random}
+   * @returns Unique transaction ID with format tx_{provider}_{timestamp}_{random}
    */
   protected generateTransactionId(): string {
     const timestamp = Date.now();

@@ -1,62 +1,62 @@
-# Guía Rápida de Deployment en Render
+# Render Deployment Quick Start Guide
 
-## Opción Automática (Blueprint)
+## Automatic Option (Blueprint)
 
-### 1. Preparación
-- Asegúrate de que tu código esté pusheado a GitHub/GitLab
-- Crea una cuenta en render.com
+### 1. Preparation
+- Ensure your code is pushed to GitHub/GitLab
+- Create an account on render.com
 
-### 2. Crear Blueprint
-1. Dashboard de Render → "New +" → "Blueprint"
-2. Conecta tu repositorio
-3. Selecciona el repo "kira"
-4. Render detectará `render.yaml` automáticamente
-5. Click en "Apply"
+### 2. Create Blueprint
+1. Render Dashboard → "New +" → "Blueprint"
+2. Connect your repository
+3. Select the "kira" repo
+4. Render will automatically detect `render.yaml`
+5. Click "Apply"
 
-### 3. Esperar deployment
-- Base de datos PostgreSQL se creará primero (~3 min)
-- Luego el servicio API (~5-7 min)
-- Ambos deben mostrar estado "Live" (círculo verde)
+### 3. Wait for deployment
+- PostgreSQL database will be created first (~3 min)
+- Then the API service (~5-7 min)
+- Both must show "Live" status (green circle)
 
-### 4. Obtener la URL
-- Ve al servicio "kira-payment-api"
-- Copia la URL (ej: https://kira-payment-api.onrender.com)
+### 4. Get the URL
+- Go to the "kira-payment-api" service
+- Copy the URL (e.g., https://kira-payment-api.onrender.com)
 
-### 5. Actualizar variable BASE_URL
-1. En el servicio "kira-payment-api"
-2. Ve a "Environment"
-3. Edita `BASE_URL` con tu URL real
-4. Guarda cambios (esto reiniciará el servicio)
+### 5. Update BASE_URL variable
+1. In the "kira-payment-api" service
+2. Go to "Environment"
+3. Edit `BASE_URL` with your actual URL
+4. Save changes (this will restart the service)
 
-### 6. Verificar
+### 6. Verify
 ```bash
-curl https://TU-URL.onrender.com/health
+curl https://YOUR-URL.onrender.com/health
 ```
 
-### 7. Ejecutar seed (opcional)
-1. Servicio → "Shell"
-2. Ejecutar: `npm run prisma:seed`
+### 7. Run seed (optional)
+1. Service → "Shell"
+2. Run: `npm run prisma:seed`
 
 ---
 
-## Opción Manual
+## Manual Option
 
-### 1. Crear PostgreSQL Database
+### 1. Create PostgreSQL Database
 1. Dashboard → "New +" → "PostgreSQL"
-2. Configurar:
+2. Configure:
    - Name: `kira-payment-db`
    - Database: `kira_payments`
    - Region: Oregon
-   - Plan: Starter ($7/mo) o Free
+   - Plan: Starter ($7/mo) or Free
 3. "Create Database"
-4. Copiar "Internal Database URL"
+4. Copy "Internal Database URL"
 
-### 2. Crear Web Service
+### 2. Create Web Service
 1. Dashboard → "New +" → "Web Service"
-2. Conectar repositorio
-3. Configurar:
+2. Connect repository
+3. Configure:
    - Name: `kira-payment-api`
-   - Region: Oregon (misma que DB)
+   - Region: Oregon (same as DB)
    - Runtime: Node
    - Build Command:
      ```
@@ -67,16 +67,16 @@ curl https://TU-URL.onrender.com/health
      npx prisma migrate deploy && npm start
      ```
 
-### 3. Agregar Variables de Entorno
+### 3. Add Environment Variables
 
-En "Environment" del Web Service, agregar:
+In the Web Service "Environment", add:
 
 ```
 NODE_ENV=production
 PORT=10000
-DATABASE_URL=[pegar Internal Database URL aquí]
+DATABASE_URL=[paste Internal Database URL here]
 CORS_ORIGIN=*
-BASE_URL=https://tu-servicio.onrender.com
+BASE_URL=https://your-service.onrender.com
 CHECKOUT_BASE_URL=https://pay.kira.com
 FX_SERVICE_BASE_RATE=18.5
 FX_SERVICE_JITTER_PERCENT=2.0
@@ -90,7 +90,7 @@ CIRCUIT_BREAKER_TIMEOUT_MS=60000
 
 ### 4. Deploy
 1. "Create Web Service"
-2. Esperar a que esté "Live"
+2. Wait until it's "Live"
 
 ---
 
@@ -98,12 +98,12 @@ CIRCUIT_BREAKER_TIMEOUT_MS=60000
 
 ### 1. Health Check
 ```bash
-curl https://tu-url.onrender.com/health
+curl https://your-url.onrender.com/health
 ```
 
-### 2. Crear Payment Link
+### 2. Create Payment Link
 ```bash
-curl -X POST https://tu-url.onrender.com/payment-links \
+curl -X POST https://your-url.onrender.com/payment-links \
   -H "Content-Type: application/json" \
   -d '{
     "merchantId": "merchant_123",
@@ -112,9 +112,9 @@ curl -X POST https://tu-url.onrender.com/payment-links \
   }'
 ```
 
-### 3. Obtener Payment Link
+### 3. Get Payment Link
 ```bash
-curl https://tu-url.onrender.com/payment-links/[ID-DEL-LINK]
+curl https://your-url.onrender.com/payment-links/[LINK-ID]
 ```
 
 ---
@@ -122,37 +122,37 @@ curl https://tu-url.onrender.com/payment-links/[ID-DEL-LINK]
 ## Troubleshooting
 
 ### Error: "Database connection failed"
-- Verifica que uses la **Internal Database URL** (no External)
-- Asegúrate de que DB y API estén en la misma región
+- Verify that you use the **Internal Database URL** (not External)
+- Make sure DB and API are in the same region
 
 ### Error: "Cannot find module '@prisma/client'"
-- Verifica que el Build Command incluya `npx prisma generate`
-- Re-deploy manual desde dashboard
+- Verify that the Build Command includes `npx prisma generate`
+- Manual redeploy from dashboard
 
-### Servicio no inicia
-1. Ve a "Logs" en el dashboard
-2. Busca errores específicos
-3. Verifica que todas las env vars estén configuradas
+### Service won't start
+1. Go to "Logs" in the dashboard
+2. Look for specific errors
+3. Verify that all env vars are configured
 
-### Migraciones fallan
-1. Ve a "Shell"
-2. Ejecuta: `npx prisma migrate deploy`
-
----
-
-## Costos
-
-- PostgreSQL Starter: $7/mes
-- Web Service Starter: $7/mes
-- **Total: $14/mes**
-
-Plan Free disponible para pruebas (limitaciones: sleep después de inactividad)
+### Migrations fail
+1. Go to "Shell"
+2. Run: `npx prisma migrate deploy`
 
 ---
 
-## Próximos pasos
+## Costs
 
-1. Configura auto-deploy en tu rama principal
-2. Agrega custom domain (opcional)
-3. Configura alertas de monitoreo
-4. Implementa frontend Angular
+- PostgreSQL Starter: $7/month
+- Web Service Starter: $7/month
+- **Total: $14/month**
+
+Free plan available for testing (limitations: sleep after inactivity)
+
+---
+
+## Next steps
+
+1. Configure auto-deploy on your main branch
+2. Add custom domain (optional)
+3. Configure monitoring alerts
+4. Implement Angular frontend

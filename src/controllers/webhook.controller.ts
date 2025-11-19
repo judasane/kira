@@ -3,8 +3,8 @@ import { PrismaClient, TransactionStatus } from '@prisma/client';
 import { PSPWebhookDTO } from '../validators/payment-link.validator';
 
 /**
- * Controlador para recibir y procesar webhooks de PSPs.
- * Maneja notificaciones asíncronas de estado de transacciones.
+ * Controller for receiving and processing PSP webhooks.
+ * Handles asynchronous transaction status notifications.
  *
  * @example
  * ```typescript
@@ -14,7 +14,7 @@ import { PSPWebhookDTO } from '../validators/payment-link.validator';
  * const prisma = new PrismaClient();
  * const controller = new WebhookController(prisma);
  *
- * // Usar en un router de Express
+ * // Use in an Express router
  * router.post('/webhooks/psp', controller.handlePSPWebhook);
  * ```
  */
@@ -27,11 +27,11 @@ export class WebhookController {
 
   /**
    * POST /webhooks/psp
-   * Recibe webhooks de PSPs mock
+   * Receives webhooks from mock PSPs
    *
-   * @param req - Request de Express con PSPWebhookDTO en body
-   * @param res - Response de Express
-   * @param next - NextFunction para manejo de errores
+   * @param req - Express Request with PSPWebhookDTO in body
+   * @param res - Express Response
+   * @param next - NextFunction for error handling
    */
   handlePSPWebhook = async (
     req: Request<object, object, PSPWebhookDTO>,
@@ -43,26 +43,26 @@ export class WebhookController {
 
       console.log(`[Webhook] Received ${eventType} from ${provider}:`, data);
 
-      // Validar que tengamos un transactionId
+      // Validate that we have a transactionId
       if (!data.transactionId) {
         const error = new Error('Missing transactionId in webhook data');
         error.name = 'BadRequestError';
         throw error;
       }
 
-      // Buscar la transacción
+      // Search for the transaction
       const transaction = await this.prisma.transaction.findUnique({
         where: { id: data.transactionId },
       });
 
       if (!transaction) {
         console.warn(`[Webhook] Transaction ${data.transactionId} not found`);
-        // Responder OK de todas formas (idempotencia)
+        // Respond OK anyway (idempotency)
         res.json({ received: true, processed: false });
         return;
       }
 
-      // Verificar idempotencia: si ya está en estado final, ignorar
+      // Verify idempotency: if already in final state, ignore
       if (
         transaction.status === TransactionStatus.COMPLETED ||
         transaction.status === TransactionStatus.FAILED
@@ -72,7 +72,7 @@ export class WebhookController {
         return;
       }
 
-      // Procesar según el tipo de evento
+      // Process according to event type
       let newStatus: TransactionStatus | null = null;
       let failureReason: string | null = null;
 
@@ -83,7 +83,7 @@ export class WebhookController {
         failureReason = 'Payment failed (webhook notification)';
       }
 
-      // Actualizar transacción si hay cambio de estado
+      // Update transaction if there is a state change
       if (newStatus) {
         await this.prisma.transaction.update({
           where: { id: transaction.id },

@@ -4,7 +4,7 @@ import { stripeMock } from './stripe.mock';
 import { adyenMock } from './adyen.mock';
 
 /**
- * Factory para obtener el cliente PSP correcto según el provider
+ * Factory to get the correct PSP client based on the provider
  */
 export function getPSPClient(provider: PSPProvider): PSPClient {
   switch (provider) {

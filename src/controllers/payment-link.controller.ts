@@ -6,8 +6,8 @@ import { config } from '../config';
 import { getFeeConfig } from '../utils/fee-config.utils';
 
 /**
- * Controlador para la gestión de payment links.
- * Maneja la creación y consulta de enlaces de pago.
+ * Controller for payment link management.
+ * Handles creation and query of payment links.
  *
  * @example
  * ```typescript
@@ -17,7 +17,7 @@ import { getFeeConfig } from '../utils/fee-config.utils';
  * const prisma = new PrismaClient();
  * const controller = new PaymentLinkController(prisma);
  *
- * // Usar en un router de Express
+ * // Use in an Express router
  * router.post('/payment-links', controller.createPaymentLink);
  * router.get('/payment-links/:id', controller.getPaymentLink);
  * ```
@@ -31,11 +31,11 @@ export class PaymentLinkController {
 
   /**
    * POST /payment-links
-   * Crear un nuevo payment link
+   * Create a new payment link
    *
-   * @param req - Request de Express con CreatePaymentLinkDTO en el body
-   * @param res - Response de Express
-   * @param next - NextFunction para manejo de errores
+   * @param req - Express Request with CreatePaymentLinkDTO in the body
+   * @param res - Express Response
+   * @param next - NextFunction for error handling
    */
   createPaymentLink = async (
     req: Request<object, object, CreatePaymentLinkDTO>,
@@ -45,7 +45,7 @@ export class PaymentLinkController {
     try {
       const { merchantId, amountUsd, description, expiresAt, feeConfigOverride } = req.body;
 
-      // Validar que el merchant existe
+      // Validate that the merchant exists
       const merchant = await this.prisma.merchant.findUnique({
         where: { id: merchantId },
       });
@@ -56,7 +56,7 @@ export class PaymentLinkController {
         throw error;
       }
 
-      // Crear el payment link
+      // Create the payment link
       const paymentLink = await this.prisma.paymentLink.create({
         data: {
           merchantId,
@@ -68,7 +68,7 @@ export class PaymentLinkController {
         },
       });
 
-      // Construir URL del checkout
+      // Build checkout URL
       const checkoutUrl = `${config.checkoutBaseUrl}/checkout/${paymentLink.id}`;
 
       res.status(201).json({
@@ -89,11 +89,11 @@ export class PaymentLinkController {
 
   /**
    * GET /payment-links/:id
-   * Obtener un payment link con preview de fees
+   * Get a payment link with fee preview
    *
-   * @param req - Request de Express con id en params y withFeePreview en query
-   * @param res - Response de Express
-   * @param next - NextFunction para manejo de errores
+   * @param req - Express Request with id in params and withFeePreview in query
+   * @param res - Express Response
+   * @param next - NextFunction for error handling
    */
   getPaymentLink = async (
     req: Request<{ id: string }, object, object, { withFeePreview?: string }>,
@@ -104,7 +104,7 @@ export class PaymentLinkController {
       const { id } = req.params;
       const withFeePreview = req.query.withFeePreview !== 'false';
 
-      // Obtener el payment link
+      // Get the payment link
       const paymentLink = await this.prisma.paymentLink.findUnique({
         where: { id },
         include: {
@@ -125,7 +125,7 @@ export class PaymentLinkController {
         throw error;
       }
 
-      // Validar que no esté expirado
+      // Validate that it is not expired
       if (paymentLink.expiresAt && paymentLink.expiresAt < new Date()) {
         await this.prisma.paymentLink.update({
           where: { id },
@@ -134,7 +134,7 @@ export class PaymentLinkController {
         paymentLink.status = PaymentLinkStatus.EXPIRED;
       }
 
-      // Construir response base
+      // Build base response
       const checkoutUrl = `${config.checkoutBaseUrl}/checkout/${paymentLink.id}`;
       const response: Record<string, unknown> = {
         id: paymentLink.id,
@@ -148,12 +148,12 @@ export class PaymentLinkController {
         checkoutUrl,
       };
 
-      // Calcular preview de fees si se solicitó
+      // Calculate fee preview if requested
       if (withFeePreview) {
-        // Obtener fee config (override o default del merchant)
+        // Get fee config (override or merchant default)
         const feeConfig = getFeeConfig(paymentLink);
 
-        // Contar transacciones del merchant para incentivo
+        // Count merchant transactions for incentive
         const txCount = await this.prisma.transaction.count({
           where: {
             paymentLink: {
@@ -165,7 +165,7 @@ export class PaymentLinkController {
 
         const isFirstTx = txCount < feeConfig.firstTxFreeCount;
 
-        // Calcular preview
+        // Calculate preview
         const calculation = await feeCalculationService.preview(
           Number(paymentLink.amountUsd),
           feeConfig,

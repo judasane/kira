@@ -1,71 +1,71 @@
-# Guía de Deployment en Render
+# Deployment Guide on Render
 
-## Prerrequisitos
+## Prerequisites
 
-1. Cuenta en [Render.com](https://render.com)
-2. Repositorio de Git (GitHub, GitLab o Bitbucket)
-3. Código pusheado al repositorio
+1. Account on [Render.com](https://render.com)
+2. Git repository (GitHub, GitLab or Bitbucket)
+3. Code pushed to repository
 
-## Opción 1: Deployment Automático con Blueprint
+## Option 1: Automatic Deployment with Blueprint
 
-### Paso 1: Conectar Repositorio
+### Step 1: Connect Repository
 
-1. Accede a [Render Dashboard](https://dashboard.render.com)
-2. Click en "New +" → "Blueprint"
-3. Conecta tu repositorio de Git
-4. Render detectará automáticamente el archivo `render.yaml`
+1. Access [Render Dashboard](https://dashboard.render.com)
+2. Click on "New +" → "Blueprint"
+3. Connect your Git repository
+4. Render will automatically detect the `render.yaml` file
 
-### Paso 2: Configurar Variables de Entorno
+### Step 2: Configure Environment Variables
 
-Render creará automáticamente:
-- Un servicio PostgreSQL (`kira-payment-db`)
-- Un servicio web (`kira-payment-api`)
+Render will automatically create:
+- A PostgreSQL service (`kira-payment-db`)
+- A web service (`kira-payment-api`)
 
-Las variables de entorno ya están definidas en `render.yaml`, pero verifica:
+Environment variables are already defined in `render.yaml`, but verify:
 
-- `DATABASE_URL`: Se conectará automáticamente a la DB
-- `BASE_URL`: Actualiza con tu URL de Render (ej. `https://kira-payment-api.onrender.com`)
+- `DATABASE_URL`: Will automatically connect to the DB
+- `BASE_URL`: Update with your Render URL (e.g. `https://kira-payment-api.onrender.com`)
 
-### Paso 3: Deploy
+### Step 3: Deploy
 
-1. Click en "Apply"
-2. Render iniciará el build y deployment
-3. Espera a que ambos servicios estén "Live" (círculo verde)
+1. Click on "Apply"
+2. Render will start the build and deployment
+3. Wait for both services to be "Live" (green circle)
 
-### Paso 4: Ejecutar Migraciones y Seed
+### Step 4: Run Migrations and Seed
 
-Las migraciones se ejecutan automáticamente en el comando de inicio.
+Migrations run automatically in the start command.
 
-Para ejecutar el seed manualmente:
+To run seed manually:
 
 ```bash
-# Desde el dashboard de Render, ve a Shell y ejecuta:
+# From Render dashboard, go to Shell and run:
 npm run prisma:seed
 ```
 
-## Opción 2: Deployment Manual
+## Option 2: Manual Deployment
 
-### Paso 1: Crear Base de Datos PostgreSQL
+### Step 1: Create PostgreSQL Database
 
 1. Dashboard → "New +" → "PostgreSQL"
-2. Configura:
+2. Configure:
    - **Name**: `kira-payment-db`
    - **Database**: `kira_payments`
    - **User**: `postgres` (default)
-   - **Region**: Oregon (o tu preferencia)
-   - **Plan**: Starter ($7/month) o Free ($0/month para pruebas)
+   - **Region**: Oregon (or your preference)
+   - **Plan**: Starter ($7/month) or Free ($0/month for testing)
 3. Click "Create Database"
-4. Espera a que esté "Available"
-5. Copia la **Internal Database URL** (la usaremos después)
+4. Wait for it to be "Available"
+5. Copy the **Internal Database URL** (we'll use it later)
 
-### Paso 2: Crear Web Service
+### Step 2: Create Web Service
 
 1. Dashboard → "New +" → "Web Service"
-2. Conecta tu repositorio
-3. Configura:
+2. Connect your repository
+3. Configure:
    - **Name**: `kira-payment-api`
-   - **Region**: Oregon (misma que la DB)
-   - **Branch**: `main` (o tu branch principal)
+   - **Region**: Oregon (same as DB)
+   - **Branch**: `main` (or your main branch)
    - **Runtime**: Node
    - **Build Command**:
      ```bash
@@ -75,16 +75,16 @@ npm run prisma:seed
      ```bash
      npx prisma migrate deploy && npm start
      ```
-   - **Plan**: Starter ($7/month) o Free ($0/month)
+   - **Plan**: Starter ($7/month) or Free ($0/month)
 
-### Paso 3: Configurar Variables de Entorno
+### Step 3: Configure Environment Variables
 
-En la sección "Environment", agrega:
+In the "Environment" section, add:
 
 ```
 NODE_ENV=production
 PORT=10000
-DATABASE_URL=<pega-aqui-la-internal-database-url>
+DATABASE_URL=<paste-internal-database-url-here>
 CORS_ORIGIN=*
 BASE_URL=https://kira-payment-api.onrender.com
 CHECKOUT_BASE_URL=https://pay.kira.com
@@ -98,24 +98,24 @@ CIRCUIT_BREAKER_FAILURE_THRESHOLD=5
 CIRCUIT_BREAKER_TIMEOUT_MS=60000
 ```
 
-**Importante**: Reemplaza `https://kira-payment-api.onrender.com` con la URL real que Render te asigne.
+**Important**: Replace `https://kira-payment-api.onrender.com` with the actual URL that Render assigns you.
 
-### Paso 4: Deploy
+### Step 4: Deploy
 
 1. Click "Create Web Service"
-2. Render comenzará el build automáticamente
-3. Monitorea los logs en la pestaña "Logs"
-4. Espera a que el servicio esté "Live"
+2. Render will start the build automatically
+3. Monitor logs in the "Logs" tab
+4. Wait for the service to be "Live"
 
-### Paso 5: Verificar Deployment
+### Step 5: Verify Deployment
 
-Accede a tu URL y verifica el healthcheck:
+Access your URL and verify the healthcheck:
 
 ```bash
-curl https://tu-app.onrender.com/health
+curl https://your-app.onrender.com/health
 ```
 
-Deberías recibir:
+You should receive:
 
 ```json
 {
@@ -125,121 +125,121 @@ Deberías recibir:
 }
 ```
 
-### Paso 6: Seed de Datos (Opcional)
+### Step 6: Seed Data (Optional)
 
-1. Ve a tu servicio en Render Dashboard
-2. Click en "Shell" (pestaña superior)
-3. Ejecuta:
+1. Go to your service in Render Dashboard
+2. Click on "Shell" (top tab)
+3. Run:
    ```bash
    npm run prisma:seed
    ```
 
-## Configuración Adicional
+## Additional Configuration
 
 ### Health Check
 
-Render verificará automáticamente la ruta `/health` cada 30 segundos.
+Render will automatically check the `/health` route every 30 seconds.
 
 ### Auto-Deploy
 
-Por defecto, Render re-deployará automáticamente cuando hagas push a la rama configurada.
+By default, Render will automatically redeploy when you push to the configured branch.
 
-Para deshabilitar:
+To disable:
 1. Service Settings → "Auto-Deploy"
 2. Toggle OFF
 
 ### Logs
 
-Para ver logs en tiempo real:
+To view logs in real-time:
 ```bash
-# Desde tu terminal local
+# From your local terminal
 curl https://api.render.com/v1/services/<service-id>/logs
 ```
 
-O desde el dashboard: Service → Logs
+Or from the dashboard: Service → Logs
 
-### Escalado
+### Scaling
 
-Para aumentar recursos:
+To increase resources:
 1. Service Settings → "Instance Type"
-2. Selecciona un plan superior
+2. Select a higher plan
 3. Save Changes
 
 ## Troubleshooting
 
 ### Error: "Cannot find module '@prisma/client'"
 
-Solución:
-1. Verifica que el Build Command incluya `npx prisma generate`
-2. Re-deploy manual desde el dashboard
+Solution:
+1. Verify that the Build Command includes `npx prisma generate`
+2. Manual redeploy from dashboard
 
 ### Error: "Database connection failed"
 
-Solución:
-1. Verifica que `DATABASE_URL` esté configurada correctamente
-2. Asegúrate de usar la **Internal Database URL** (no la External)
-3. Verifica que la DB y el servicio estén en la misma región
+Solution:
+1. Verify that `DATABASE_URL` is configured correctly
+2. Make sure to use the **Internal Database URL** (not External)
+3. Verify that DB and service are in the same region
 
 ### Error: "Migrations failed"
 
-Solución:
-1. Ve a Shell en el servicio
-2. Ejecuta manualmente:
+Solution:
+1. Go to Shell in the service
+2. Run manually:
    ```bash
    npx prisma migrate deploy
    ```
 
-### Servicio no inicia
+### Service won't start
 
-Revisa los logs:
+Check the logs:
 1. Service → Logs
-2. Busca errores de TypeScript o dependencias faltantes
+2. Look for TypeScript errors or missing dependencies
 
-## Monitoreo
+## Monitoring
 
-### Métricas Básicas
+### Basic Metrics
 
-Render provee:
+Render provides:
 - CPU usage
 - Memory usage
 - Response times
 - Error rates
 
-Accede desde: Service → Metrics
+Access from: Service → Metrics
 
-### Alertas
+### Alerts
 
-Configura alertas:
+Configure alerts:
 1. Service Settings → "Notifications"
-2. Agrega email o webhook
+2. Add email or webhook
 
-## Costos Estimados
+## Estimated Costs
 
-| Componente | Plan | Costo Mensual |
-|------------|------|---------------|
+| Component | Plan | Monthly Cost |
+|-----------|------|--------------|
 | PostgreSQL | Starter | $7 |
 | Web Service | Starter | $7 |
 | **TOTAL** | | **$14/month** |
 
-**Nota**: Render ofrece planes Free para pruebas, pero tienen limitaciones (servicios duermen después de inactividad).
+**Note**: Render offers Free plans for testing, but they have limitations (services sleep after inactivity).
 
-## Seguridad
+## Security
 
-### Variables de Entorno Sensibles
+### Sensitive Environment Variables
 
-- Nunca hagas commit de `.env`
-- Usa las Environment Variables de Render
-- Rota credenciales regularmente
+- Never commit `.env`
+- Use Render's Environment Variables
+- Rotate credentials regularly
 
 ### HTTPS
 
-Render provee HTTPS automáticamente con certificados Let's Encrypt.
+Render provides HTTPS automatically with Let's Encrypt certificates.
 
 ### Database Backups
 
-Render hace backups automáticos diarios en planes Starter y superiores.
+Render makes automatic daily backups on Starter plans and above.
 
-## Soporte
+## Support
 
 - [Render Docs](https://render.com/docs)
 - [Render Community](https://community.render.com)

@@ -3,7 +3,7 @@ import { ZodError } from 'zod';
 import { ApiError } from '../types';
 
 /**
- * Middleware global de manejo de errores
+ * Global error handling middleware
  */
 export function errorHandler(
   error: Error,
@@ -13,7 +13,7 @@ export function errorHandler(
 ): void {
   console.error('[Error]', error);
 
-  // Validación con Zod
+  // Zod validation
   if (error instanceof ZodError) {
     const apiError: ApiError = {
       error: 'Validation Error',
@@ -25,7 +25,7 @@ export function errorHandler(
     return;
   }
 
-  // Errores de aplicación custom
+  // Custom application errors
   if (error.name === 'NotFoundError') {
     const apiError: ApiError = {
       error: 'Not Found',
@@ -56,7 +56,7 @@ export function errorHandler(
     return;
   }
 
-  // Error genérico
+  // Generic error
   const apiError: ApiError = {
     error: 'Internal Server Error',
     message: process.env.NODE_ENV === 'production' ? 'An unexpected error occurred' : error.message,
@@ -66,7 +66,7 @@ export function errorHandler(
 }
 
 /**
- * Middleware para rutas no encontradas
+ * Middleware for not found routes
  */
 export function notFoundHandler(req: Request, res: Response): void {
   const apiError: ApiError = {

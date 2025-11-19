@@ -2,15 +2,15 @@ import { PrismaClient } from '@prisma/client';
 import { createApp } from './app';
 import { config } from './config';
 
-// Inicializar Prisma Client
+// Initialize Prisma Client
 const prisma = new PrismaClient({
   log: config.nodeEnv === 'development' ? ['query', 'error', 'warn'] : ['error'],
 });
 
-// Crear aplicación Express
+// Create Express application
 const app = createApp(prisma);
 
-// Iniciar servidor
+// Start server
 const server = app.listen(config.port, () => {
   console.log('');
   console.log('🚀 Kira Payment Backend API');
@@ -25,7 +25,7 @@ const server = app.listen(config.port, () => {
   console.log('');
 });
 
-// Manejo de shutdown graceful
+// Graceful shutdown handling
 const gracefulShutdown = async (signal: string) => {
   console.log(`\n${signal} received. Starting graceful shutdown...`);
 
@@ -39,7 +39,7 @@ const gracefulShutdown = async (signal: string) => {
     process.exit(0);
   });
 
-  // Forzar shutdown después de 10 segundos
+  // Force shutdown after 10 seconds
   setTimeout(() => {
     console.error('Forcing shutdown after timeout');
     process.exit(1);
@@ -49,7 +49,7 @@ const gracefulShutdown = async (signal: string) => {
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
-// Manejo de errores no capturados
+// Uncaught errors handling
 process.on('unhandledRejection', (reason: unknown, promise: Promise<unknown>) => {
   console.error('Unhandled Rejection at:', promise, 'reason:', reason);
 });
