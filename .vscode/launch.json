@@ -11,7 +11,8 @@
                 "dev"
             ],
             "skipFiles": [
-                "<node_internals>/**"
+                "<node_internals>/**",
+                "**/node_modules/**"
             ],
             "console": "integratedTerminal",
             "restart": true
